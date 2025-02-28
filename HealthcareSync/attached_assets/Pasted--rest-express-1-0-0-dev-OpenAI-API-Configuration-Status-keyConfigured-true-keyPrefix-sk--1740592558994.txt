@@ -1,0 +1,60 @@
+
+> rest-express@1.0.0 dev
+OpenAI API Configuration Status: { keyConfigured: true, keyPrefix: 'sk-' }
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 5000ms...
+Checking and running database migrations...
+Database migrations completed successfully
+WebSocket server initialized successfully
+5:41:53 PM [express] Server running on port 5000
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 10000ms...
+5:41:58 PM [express] GET /api/user 401 in 2ms
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 15000ms...
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 20000ms...
+5:42:28 PM [express] GET /api/user 401 in 1ms
+5:42:33 PM [express] POST /api/login 200 in 360ms
+Cache get error: TypeError: Cannot read properties of undefined (reading 'getFromMemoryCache')
+    at getCache (/home/runner/workspace/server/lib/redis.ts:95:31)
+    at <anonymous> (/home/runner/workspace/server/middleware/cache.ts:16:32)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/home/runner/workspace/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at /home/runner/workspace/node_modules/express/lib/router/index.js:284:15
+    at Function.process_params (/home/runner/workspace/node_modules/express/lib/router/index.js:346:12)
+    at next (/home/runner/workspace/node_modules/express/lib/router/index.js:280:10)
+    at strategy.pass (/home/runner/workspace/node_modules/passport/lib/middleware/authenticate.js:355:9)
+    at /home/runner/workspace/node_modules/passport/lib/strategies/session.js:120:12
+    at pass (/home/runner/workspace/node_modules/passport/lib/authenticator.js:352:31)
+    at deserialized (/home/runner/workspace/node_modules/passport/lib/authenticator.js:364:7)
+    at <anonymous> (/home/runner/workspace/server/auth.ts:60:7)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+Cache set error: TypeError: Cannot read properties of undefined (reading 'setToMemoryCache')
+    at setCache (/home/runner/workspace/server/lib/redis.ts:124:12)
+    at ServerResponse.res.json (/home/runner/workspace/server/middleware/cache.ts:28:9)
+    at <anonymous> (/home/runner/workspace/server/routes.ts:317:9)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+5:42:34 PM [express] GET /api/admin/stats 304 in 346ms
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 20000ms...
+5:42:51 PM [express] GET /api/user 200 in 67ms
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 20000ms...
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 20000ms...
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 20000ms...
+5:43:47 PM [express] GET /api/user 200 in 285ms
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 20000ms...
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Retrying Redis connection in 20000ms...
+5:44:30 PM [vite] hmr update /src/App.tsx?v=lMEXhvDu1XbwXVvDSaDN0, /src/index.css?v=lMEXhvDu1XbwXVvDSaDN0
+5:44:31 PM [vite] hmr update /src/lib/protected-route.tsx, /src/index.css?v=lMEXhvDu1XbwXVvDSaDN0
+Redis connection error: connect ECONNREFUSED 127.0.0.1:6379
+Redis connection failed after 10 retries, using memory cache
+Redis connection ended, using memory cache
+5:46:06 PM [express] GET /api/user 200 in 292ms

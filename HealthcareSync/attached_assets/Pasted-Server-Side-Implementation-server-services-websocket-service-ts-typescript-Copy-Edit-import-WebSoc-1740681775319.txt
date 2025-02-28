@@ -1,0 +1,105 @@
+Server-Side Implementation (server/services/websocket-service.ts)
+typescript
+Copy
+Edit
+import WebSocket, { Server } from 'ws';
+
+class WebSocketService {
+  private wss: Server;
+  private clients: Set<WebSocket> = new Set();
+
+  constructor(server: any) {
+    // Initialize the WebSocket server
+    this.wss = new Server({ server });
+    this.setupListeners();
+  }
+
+  private setupListeners(): void {
+    // Listen for new connections
+    this.wss.on('connection', (ws: WebSocket) => {
+      this.clients.add(ws);
+      console.log('Client connected');
+
+      ws.on('message', (message: string) => {
+        console.log('Received message:', message);
+      });
+
+      ws.on('close', () => {
+        this.clients.delete(ws);
+        console.log('Client disconnected');
+      });
+
+      ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+        // Close the socket to trigger cleanup
+        ws.close();
+      });
+    });
+
+    // Periodically clean up non-open connections
+    setInterval(() => {
+      this.clients.forEach((ws) => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          this.clients.delete(ws);
+          console.log('Cleaned up an inactive connection');
+        }
+      });
+    }, 5000); // Cleanup every 5 seconds
+  }
+
+  // Optional helper: Broadcast a message to all connected clients
+  public broadcast(message: string): void {
+    this.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  }
+}
+
+export default WebSocketService;
+Client-Side Reconnection Strategy (for reference)
+Since reconnection is usually handled on the client, here’s an example of an exponential backoff strategy for client reconnections:
+
+typescript
+Copy
+Edit
+let socket: WebSocket | null = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
+const baseDelay = 1000; // 1 second
+
+function connectWebSocket() {
+  socket = new WebSocket('wss://yourserver.com');
+
+  socket.onopen = () => {
+    console.log('Connected to WebSocket');
+    reconnectAttempts = 0; // Reset attempts on successful connection
+  };
+
+  socket.onclose = () => {
+    if (reconnectAttempts < maxReconnectAttempts) {
+      const delay = baseDelay * Math.pow(2, reconnectAttempts); // Exponential backoff
+      reconnectAttempts++;
+      console.log(`Attempting reconnection in ${delay} ms`);
+      setTimeout(connectWebSocket, delay);
+    } else {
+      console.error('Max reconnection attempts reached.');
+    }
+  };
+
+  socket.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+}
+
+connectWebSocket();
+Summary
+Server-side:
+
+The wss property is initialized in the constructor.
+Inactive connections are cleaned up regularly.
+Error handling on each connection ensures that any faulty socket is closed and removed.
+Client-side (optional):
+
+An exponential backoff reconnection strategy is implemented to handle reconnections gracefully.

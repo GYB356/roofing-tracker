@@ -1,0 +1,87 @@
+Let's address the React Query Client Issues in client/src/lib/queryClient.ts by focusing on three main points:
+
+1. Unsafe Error Type Handling
+Issue:
+In your current setup, error types on lines 39 and 73 are handled unsafely, which might lead to unexpected runtime issues.
+
+Solution:
+Handle errors as unknown and use type narrowing. This ensures that you safely access error properties only after confirming the type.
+
+Example:
+
+typescript
+Copy
+Edit
+onError: (error: unknown) => {
+  if (error instanceof Error) {
+    console.error('Query error:', error.message);
+  } else {
+    console.error('Unexpected query error:', error);
+  }
+},
+2. cacheTime Property Issue
+Issue:
+Your code references the cacheTime property on QueryObserverOptions, which might be deprecated or missing in your current React Query version.
+
+Solution:
+Instead of cacheTime, you can use staleTime to control how long a query’s data remains fresh. Adjust this value to suit your caching strategy.
+
+Example:
+
+typescript
+Copy
+Edit
+staleTime: 300000, // Data remains fresh for 5 minutes
+3. Missing Proper Request Cancellation
+Issue:
+Without cancellation, redundant or outdated requests may continue to run, potentially causing race conditions or unnecessary network load.
+
+Solution:
+Implement cancellation in your query functions using the AbortController API. Pass the abort signal into your fetch request so that React Query can cancel it if needed.
+
+Example Query Function with Cancellation:
+
+typescript
+Copy
+Edit
+export async function fetchData(url: string): Promise<any> {
+  const controller = new AbortController();
+  const signal = controller.signal;
+
+  // Optionally, you can integrate this cancellation mechanism with React Query's queryFn
+  const response = await fetch(url, { signal });
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
+  }
+  return response.json();
+}
+Bringing It All Together
+Below is an updated version of your queryClient.ts that integrates these fixes:
+
+typescript
+Copy
+Edit
+import { QueryClient } from '@tanstack/react-query';
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Instead of cacheTime, we use staleTime to control caching behavior
+      staleTime: 300000, // 5 minutes
+      retry: 1, // Simple retry strategy; adjust as needed
+      onError: (error: unknown) => {
+        if (error instanceof Error) {
+          console.error('Query error:', error.message);
+        } else {
+          console.error('Unexpected query error:', error);
+        }
+      },
+      // Ensure your query functions support cancellation via AbortController
+    },
+  },
+});
+With these changes:
+
+Error handling is now safe and robust.
+The outdated cacheTime property is replaced with staleTime.
+You have an example of implementing request cancellation in your fetch function.

@@ -1,0 +1,48 @@
+Redesign and improve the patient dashboard in the RevenueMD Healthcare Platform to enhance user experience, accessibility, and functionality. The dashboard should be modern, responsive, visually appealing, and AI-powered where applicable.
+
+🔹 Features to Implement & Improve
+1️⃣ UI/UX Enhancements
+Implement a clean, modern, and responsive layout.
+Add rounded corners, soft shadows, and padding improvements.
+Ensure full mobile, tablet, and desktop responsiveness.
+Include icons for navigation items (dashboard, appointments, medical records, claims) using Lucide React.
+2️⃣ Patient Profile Section
+Display patient’s name, profile picture, age, and email.
+Add a dropdown for "Account Settings" & "Logout".
+Allow profile editing with name, contact info, and health details.
+3️⃣ Next Appointment Section
+Display doctor’s name, date, time, and location.
+Add "Reschedule" & "Cancel" buttons with confirmation modals.
+Show a "Book an Appointment" button if no appointment exists.
+4️⃣ Medical Records Quick Access
+Show a summary of recent test results, prescriptions, and doctor notes.
+Include a "View Full History" button linking to the full medical records page.
+Allow downloading records as PDF files.
+5️⃣ Health Metrics & AI-Powered Insights
+Integrate graphs/charts (using Recharts) for:
+Weight trends
+Heart rate monitoring
+Blood pressure logs
+Provide AI-generated health insights & recommendations.
+Display step count & exercise data (if available).
+6️⃣ Notifications & Health Alerts
+Show medication reminders, upcoming appointment alerts, and doctor messages.
+Allow users to mark notifications as read.
+Display a bell icon with badge count.
+7️⃣ Emergency & Quick Actions
+Add a "Call Doctor" button with emergency contact info.
+Include a "Request an Appointment" shortcut.
+Implement quick prescription refills for active medications.
+8️⃣ Recent Health Activities
+Show patient interactions (appointments, prescriptions, lab tests, etc.).
+If no activity exists, display a friendly placeholder message.
+9️⃣ Dark Mode Support
+Add a toggle switch to enable dark mode using Tailwind’s dark variant.
+🛠️ Tech Stack & Requirements
+Frontend: Next.js 14, TypeScript, TailwindCSS
+State Management: React Context or Zustand
+Database: MongoDB with Prisma ORM
+API Calls: Fetch real patient data from the database
+Authentication: NextAuth.js with JWT-based session management
+Security: Implement role-based access control (RBAC) to prevent unauthorized access
+Testing: Jest & React Testing Library for UI and API testing

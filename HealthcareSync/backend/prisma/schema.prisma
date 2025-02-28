@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  DOCTOR
+  STAFF
+  PATIENT
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String
+  name           String
+  role           UserRole  @default(PATIENT)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Patient profile relation
+  patientProfile Patient?
+
+  // Doctor profile relation
+  doctorProfile  Doctor?
+
+  // Appointments where user is a patient
+  patientAppointments Appointment[] @relation("PatientAppointments")
+
+  // Appointments where user is a doctor
+  doctorAppointments  Appointment[] @relation("DoctorAppointments")
+}
+
+model Patient {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth   DateTime?
+  phone         String?
+  address       String?
+  insuranceInfo String?
+  medicalHistory String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  healthMetrics HealthMetric[]
+  medicalRecords MedicalRecord[]
+}
+
+model Doctor {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialty     String
+  licenseNumber String
+  bio           String?
+  availability  Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Appointment {
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     User      @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctorId    String
+  doctor      User      @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  date        DateTime
+  startTime   DateTime
+  endTime     DateTime
+  status      String    @default("scheduled") // scheduled, completed, cancelled
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model HealthMetric {
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  type        String    // blood_pressure, heart_rate, weight, etc.
+  value       Float
+  unit        String
+  timestamp   DateTime  @default(now())
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model MedicalRecord {
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  title       String
+  description String
+  date        DateTime
+  provider    String?
+  attachments Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Claim {
+  id              String    @id @default(uuid())
+  appointmentId   String?
+  patientName     String
+  providerName    String
+  serviceDate     DateTime
+  claimAmount     Float
+  insuranceInfo   String
+  status          String    @default("pending") // pending, approved, denied
+  submissionDate  DateTime  @default(now())
+  processedDate   DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Subscription {
+  id          String    @id @default(uuid())
+  userId      String
+  plan        String
+  amount      Float
+  status      String    @default("active") // active, cancelled, expired
+  startDate   DateTime  @default(now())
+  endDate     DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
