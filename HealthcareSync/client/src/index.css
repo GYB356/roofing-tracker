@@ -1,0 +1,196 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #1a365d;
+  --primary-light: #2a4a7f;
+  --primary-dark: #0f2342;
+  --secondary-color: #38a169;
+  --secondary-light: #48bb78;
+  --secondary-dark: #2f855a;
+  --accent-color: #ed8936;
+  --text-color: #2d3748;
+  --text-light: #4a5568;
+  --background-color: #f7fafc;
+  --background-light: #ffffff;
+  --background-dark: #edf2f7;
+  --error-color: #e53e3e;
+  --success-color: #38a169;
+  --warning-color: #f6ad55;
+  --info-color: #4299e1;
+}
+
+/* Dark mode variables */
+.dark {
+  --primary-color: #2b6cb0;
+  --primary-light: #4299e1;
+  --primary-dark: #2c5282;
+  --secondary-color: #48bb78;
+  --secondary-light: #68d391;
+  --secondary-dark: #38a169;
+  --accent-color: #f6ad55;
+  --text-color: #f7fafc;
+  --text-light: #e2e8f0;
+  --background-color: #1a202c;
+  --background-light: #2d3748;
+  --background-dark: #171923;
+  --error-color: #fc8181;
+  --success-color: #68d391;
+  --warning-color: #fbd38d;
+  --info-color: #63b3ed;
+}
+
+/* High contrast mode */
+.high-contrast {
+  --primary-color: #0056b3;
+  --primary-light: #007bff;
+  --primary-dark: #004494;
+  --secondary-color: #008000;
+  --secondary-light: #00a000;
+  --secondary-dark: #006000;
+  --accent-color: #ff6600;
+  --text-color: #000000;
+  --text-light: #333333;
+  --background-color: #ffffff;
+  --background-light: #ffffff;
+  --background-dark: #f0f0f0;
+  --error-color: #ff0000;
+  --success-color: #008000;
+  --warning-color: #ff8c00;
+  --info-color: #0000ff;
+}
+
+/* Dark high contrast mode */
+.dark.high-contrast {
+  --primary-color: #4da6ff;
+  --primary-light: #80bfff;
+  --primary-dark: #0080ff;
+  --secondary-color: #00cc00;
+  --secondary-light: #00ff00;
+  --secondary-dark: #009900;
+  --accent-color: #ff9933;
+  --text-color: #ffffff;
+  --text-light: #f0f0f0;
+  --background-color: #000000;
+  --background-light: #1a1a1a;
+  --background-dark: #0d0d0d;
+  --error-color: #ff6666;
+  --success-color: #66ff66;
+  --warning-color: #ffcc66;
+  --info-color: #6666ff;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom utility classes */
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition duration-200;
+  }
+  
+  .btn-outline {
+    @apply border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-2 px-4 rounded transition duration-200;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded transition duration-200;
+  }
+  
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6;
+  }
+  
+  .form-input {
+    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white;
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+  }
+  
+  .form-error {
+    @apply text-red-600 dark:text-red-400 text-sm mt-1;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-success {
+    @apply bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100;
+  }
+  
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100;
+  }
+  
+  .badge-danger {
+    @apply bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100;
+  }
+  
+  .badge-info {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100;
+  }
+}
+
+/* Accessibility focus styles */
+*:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Skip to content link for keyboard users */
+.skip-to-content {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-blue-600 focus:shadow-lg focus:rounded;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background-color: white;
+    color: black;
+  }
+  
+  .card {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+} 
