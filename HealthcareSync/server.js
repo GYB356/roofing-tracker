@@ -408,6 +408,29 @@ io.on('connection', (socket) => {
     NotificationService.removeClient(userId);
     logger.info(`User disconnected from socket: ${userId}`);
   });
+
+  // Add WebSocket endpoint for consultation updates
+  socket.on('consultation_update', async (data) => {
+    try {
+      // Validate input data
+      if (!data.consultationId || !data.update) {
+        return socket.emit('error', { message: 'Invalid consultation update data' });
+      }
+
+      // Process consultation update
+      const updateResult = await TelemedicineService.updateConsultation(data.consultationId, data.update);
+      if (updateResult) {
+        // Notify all participants in the consultation
+        io.to(`consultation:${data.consultationId}`).emit('consultation_update', data.update);
+        logger.info(`Consultation update for ${data.consultationId} by user ${userId}`);
+      } else {
+        socket.emit('error', { message: 'Failed to update consultation' });
+      }
+    } catch (err) {
+      logger.error('Error updating consultation:', err);
+      socket.emit('error', { message: 'Failed to update consultation' });
+    }
+  });
 });
 
 // Add users to role-based rooms
@@ -437,6 +460,15 @@ process.on('uncaughtException', (err) => {
   logger.error('Uncaught Exception:', err);
   // Always crash on uncaught exceptions as the state is now uncertain
   process.exit(1);
+});
+
+// Ensure HIPAA compliance logging
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    auditLogger(req, res, next);
+  } else {
+    next();
+  }
 });
 
 module.exports = { app, server, io }; 
