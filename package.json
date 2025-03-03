@@ -27,7 +27,6 @@
     "validate": "npm run lint && npm run type-check"
   },
   "dependencies": {
-    "eslint": "^9.21.0",
     "next": "^15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -41,6 +40,7 @@
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^4.6.2",
     "globals": "^15.15.0",
