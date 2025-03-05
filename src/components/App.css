@@ -1,0 +1,55 @@
+/* App container layout */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: #111827;
+  }
+  
+  /* Main content area */
+  .content {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  
+  /* Dark mode and light mode variables */
+  :root {
+    --bg-primary: #f8fafc;
+    --text-primary: #1e293b;
+    --sidebar-bg: #1e293b;
+    --sidebar-text: #f8fafc;
+  }
+  
+  /* Dark mode */
+  .dark {
+    --bg-primary: #0f172a;
+    --text-primary: #f8fafc;
+    --sidebar-bg: #1e293b;
+    --sidebar-text: #f8fafc;
+  }
+  
+  /* Global styles */
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
+  
+  /* Make sure all pages take up full height */
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .app-container {
+      flex-direction: column;
+    }
+  }

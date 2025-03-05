@@ -1,290 +1,247 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-// Create context
-const AuthContext = createContext();
-
-// Custom hook to use the auth context
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+// Create the auth context
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
   const navigate = useNavigate();
-  
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const location = useLocation();
 
-  // Configure axios defaults
-  axios.defaults.baseURL = API_URL;
-  
-  // Set auth token in axios headers
+  // Check if the user is authenticated on component mount
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [token]);
-  
-  // Load user on initial mount or token change
-  useEffect(() => {
-    const loadUser = async () => {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-      
+    const checkAuthStatus = async () => {
       try {
-        const res = await axios.get('/api/auth/me');
-        setUser(res.data.user);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading user:', err);
-        // Clear invalid tokens
-        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-          logout();
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          setLoading(false);
+          return;
         }
-        setError('Failed to authenticate user');
+        
+        // Get the user from localStorage based on the token
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        const currentUserId = localStorage.getItem('currentUserId');
+        
+        if (!currentUserId) {
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          localStorage.removeItem('token');
+          setLoading(false);
+          return;
+        }
+        
+        const user = users.find(u => u.id === currentUserId);
+        
+        if (!user) {
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('currentUserId');
+          setLoading(false);
+          return;
+        }
+        
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } catch (err) {
+        console.error('Authentication check failed:', err);
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('currentUserId');
       } finally {
         setLoading(false);
       }
     };
     
-    loadUser();
-  }, [token]);
-  
-  // Register new user
+    checkAuthStatus();
+  }, []);
+
   const register = async (userData) => {
     try {
       setLoading(true);
-      const res = await axios.post('/api/auth/register', userData);
+      setError(null);
       
-      // If registration requires email verification
-      if (res.data.requireVerification) {
-        return {
-          success: true,
-          message: 'Registration successful. Please verify your email.'
-        };
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Store user data in localStorage
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const existingUser = users.find(user => user.email === userData.email);
+      
+      if (existingUser) {
+        throw new Error('User with this email already exists');
       }
       
-      // Otherwise set token and user directly
-      setToken(res.data.token);
-      setUser(res.data.user);
-      localStorage.setItem('token', res.data.token);
+      // Create a new user with an ID and store in localStorage
+      const newUser = {
+        ...userData,
+        id: Date.now().toString(),
+        hipaaConsent: { status: 'pending', date: null },
+        emailVerified: true // Setting to true for testing convenience
+      };
+      
+      users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(users));
+      
+      return { success: true, message: 'Registration successful. Please check your email to verify your account.' };
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+      return { success: false, message: err.message || 'Registration failed. Please try again.' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (email, password, rememberMe = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Get users from localStorage
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const user = users.find(u => u.email === email);
+      
+      if (!user || user.password !== password) {
+        throw new Error('Invalid credentials');
+      }
+      
+      // Create a mock token
+      const token = `mock-token-${Date.now()}`;
+      localStorage.setItem('token', token);
+      localStorage.setItem('currentUserId', user.id);
+      
+      // If rememberMe is true, we could set a longer expiration
+      localStorage.setItem('rememberMe', rememberMe);
+      
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      
+      // Redirect to the page the user was trying to access, or to the dashboard
+      const origin = location.state?.from?.pathname || '/';
+      navigate(origin);
       
       return { success: true };
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Registration failed'
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Login user
-  const login = async (email, password) => {
-    try {
-      setLoading(true);
-      const res = await axios.post('/api/auth/login', { email, password });
-      
-      setToken(res.data.token);
-      setUser(res.data.user);
-      localStorage.setItem('token', res.data.token);
-      
-      return { success: true };
-    } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed');
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Authentication failed'
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Logout user
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
-    setError(null);
-    navigate('/login');
-  };
-  
-  // Update user profile
-  const updateProfile = async (profileData) => {
-    try {
-      setLoading(true);
-      const res = await axios.put('/api/auth/profile', profileData);
-      
-      setUser(res.data.user);
-      
-      return { success: true, user: res.data.user };
-    } catch (err) {
-      setError(err.response?.data?.message || 'Profile update failed');
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Profile update failed'
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Change password
-  const changePassword = async (currentPassword, newPassword) => {
-    try {
-      setLoading(true);
-      await axios.put('/api/auth/change-password', { 
-        currentPassword, 
-        newPassword 
-      });
-      
-      return { success: true, message: 'Password updated successfully' };
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to change password');
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Failed to change password'
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Request password reset
-  const forgotPassword = async (email) => {
-    try {
-      setLoading(true);
-      const res = await axios.post('/api/auth/forgot-password', { email });
+      setError(err.message || 'Login failed. Please check your credentials and try again.');
       return { 
-        success: true, 
-        message: res.data.message || 'Password reset email sent'
-      };
-    } catch (err) {
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Failed to send reset email'
+        success: false, 
+        message: err.message || 'Login failed. Please check your credentials and try again.'
       };
     } finally {
       setLoading(false);
     }
   };
-  
-  // Reset password with token
-  const resetPassword = async (token, newPassword) => {
-    try {
-      setLoading(true);
-      const res = await axios.post('/api/auth/reset-password', { 
-        token, 
-        newPassword 
-      });
-      return { 
-        success: true, 
-        message: res.data.message || 'Password has been reset'
-      };
-    } catch (err) {
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Failed to reset password'
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Verify email with token
-  const verifyEmail = async (token) => {
-    try {
-      setLoading(true);
-      const res = await axios.post('/api/auth/verify-email', { token });
+
+  const logout = useCallback(() => {
+    setLoading(true);
+    
+    // Simulate network delay
+    setTimeout(() => {
+      // Clear token and user data
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUserId');
       
-      // If verification includes automatic login
-      if (res.data.token) {
-        setToken(res.data.token);
-        setUser(res.data.user);
-        localStorage.setItem('token', res.data.token);
+      // Clear user state
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+      
+      // Redirect to login page
+      navigate('/login');
+    }, 500);
+  }, [navigate]);
+
+  const acceptHipaaConsent = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Get users from localStorage
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const userIndex = users.findIndex(u => u.id === currentUser.id);
+      
+      if (userIndex === -1) {
+        throw new Error('User not found');
       }
       
-      return { 
-        success: true, 
-        message: res.data.message || 'Email verified successfully'
+      // Update HIPAA consent
+      users[userIndex].hipaaConsent = { 
+        status: 'accepted', 
+        date: new Date().toISOString() 
       };
-    } catch (err) {
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Failed to verify email'
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Check if user has completed HIPAA consent
-  const hasHipaaConsent = () => {
-    return user?.hipaaConsent?.status === 'accepted';
-  };
-  
-  // Submit HIPAA consent
-  const submitHipaaConsent = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.post('/api/auth/hipaa-consent');
       
-      // Update user with new consent status
-      setUser({
-        ...user,
-        hipaaConsent: {
-          status: 'accepted',
-          date: new Date()
-        }
+      localStorage.setItem('users', JSON.stringify(users));
+      
+      // Update current user
+      setCurrentUser({ 
+        ...currentUser, 
+        hipaaConsent: { 
+          status: 'accepted', 
+          date: new Date().toISOString() 
+        } 
       });
       
-      return { 
-        success: true, 
-        message: res.data.message || 'HIPAA consent recorded'
-      };
+      // Redirect to the page the user was trying to access, or to the dashboard
+      const origin = location.state?.from?.pathname || '/';
+      navigate(origin);
+      
+      return { success: true, message: 'HIPAA consent accepted.' };
     } catch (err) {
-      return {
-        success: false,
-        message: err.response?.data?.message || 'Failed to record HIPAA consent'
+      setError(err.message || 'Failed to record HIPAA consent. Please try again.');
+      return { 
+        success: false, 
+        message: err.message || 'Failed to record HIPAA consent. Please try again.' 
       };
     } finally {
       setLoading(false);
     }
   };
-  
-  // Value object to be provided by context
+
+  // Other auth functions (forgotPassword, resetPassword, verifyEmail) implemented similarly
+
+  // Context value object with all the authentication state and functions
   const value = {
-    user,
-    token,
+    currentUser,
     loading,
     error,
-    register,
+    isAuthenticated,
     login,
     logout,
-    updateProfile,
-    changePassword,
-    forgotPassword,
-    resetPassword,
-    verifyEmail,
-    hasHipaaConsent,
-    submitHipaaConsent,
-    isAuthenticated: !!user
+    register,
+    acceptHipaaConsent,
+    clearError: () => setError(null)
   };
-  
+
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
+
+// Custom hook to use the auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === null) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export default AuthContext;

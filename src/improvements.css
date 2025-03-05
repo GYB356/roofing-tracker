@@ -1,0 +1,148 @@
+/* Add these styles to your global CSS or create a new CSS module */
+
+/* Better font rendering */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* Improved transitions */
+  .transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+  
+  /* Card hover effects */
+  .card-hover {
+    transform: translateY(0);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  /* Better gradient backgrounds */
+  .bg-gradient-blue {
+    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  }
+  
+  .bg-gradient-green {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  }
+  
+  .bg-gradient-purple {
+    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  }
+  
+  .bg-gradient-red {
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  }
+  
+  .bg-gradient-yellow {
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  }
+  
+  .bg-gradient-indigo {
+    background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+  }
+  
+  /* Custom scrollbar for Webkit browsers */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  /* Dark mode adjustments */
+  .dark ::-webkit-scrollbar-track {
+    background: #111827;
+  }
+  
+  .dark ::-webkit-scrollbar-thumb {
+    background: #4b5563;
+  }
+  
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
+  
+  /* Card styles */
+  .dashboard-card {
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    height: 100%;
+  }
+  
+  .dark .dashboard-card {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.18);
+  }
+  
+  /* Icon containers */
+  .icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  .dark .icon-container {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Button styles */
+  .btn-primary {
+    padding: 0.5rem 1rem;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+  }
+  
+  .btn-primary:hover {
+    background-color: #2563eb;
+  }
+  
+  .dark .btn-primary {
+    background-color: #4f46e5;
+  }
+  
+  .dark .btn-primary:hover {
+    background-color: #4338ca;
+  }
+  
+  /* Dropdown menu animations */
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .dropdown-menu {
+    animation: slideDown 0.2s ease-out;
+  }

@@ -1,77 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useTheme } from '../../contexts/ThemeContext';
-import { useAuth } from '../../contexts/AuthContext';
-import Navbar from './Navbar';
-import Sidebar from './Sidebar';
-import Footer from './Footer';
+import React from 'react';
 
-const Layout = ({ children }) => {
-  const { theme } = useTheme();
-  const { isAuthenticated } = useAuth();
-  const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  // Update document body class when theme changes
-  useEffect(() => {
-    document.body.className = theme === 'dark' ? 'dark bg-gray-900' : 'bg-gray-50';
-  }, [theme]);
-  
-  // Close sidebar when route changes (on mobile)
-  useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [location.pathname]);
-  
-  // Toggle sidebar
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-  
-  // Determine if the current route should have a sidebar
-  const shouldShowSidebar = () => {
-    // Don't show sidebar for auth pages
-    const noSidebarRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
-    return isAuthenticated && !noSidebarRoutes.some(route => location.pathname.startsWith(route));
-  };
-  
+/**
+ * Reusable page layout component for consistent design across all pages
+ * 
+ * @param {string} title - The page title
+ * @param {string} description - Brief description of the page
+ * @param {string} bgColor - Background color class for the header (default: "bg-blue-600")
+ * @param {string} textColor - Text color class for the description (default: "text-blue-100")
+ * @param {React.ReactNode} children - The page content
+ * @param {React.ReactNode} actions - Optional action buttons to display in the header
+ */
+const PageLayout = ({ 
+  title, 
+  description, 
+  bgColor = "bg-blue-600", 
+  textColor = "text-blue-100", 
+  children,
+  actions
+}) => {
   return (
-    <div className="min-h-screen flex flex-col">
-      <a href="#main-content" className="skip-to-content">
-        Skip to content
-      </a>
-      
-      {/* Navbar */}
-      <Navbar toggleSidebar={toggleSidebar} />
-      
-      {/* Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-50 z-20 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      
-      <div className="flex flex-1">
-        {/* Sidebar */}
-        {shouldShowSidebar() && (
-          <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-        )}
-        
-        {/* Main Content */}
-        <main 
-          id="main-content" 
-          className={`flex-1 transition-all duration-300 ${shouldShowSidebar() ? 'lg:ml-64' : ''}`}
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {children}
+    <div className="container mx-auto px-4 py-6 max-w-screen-xl">
+      {/* Header section */}
+      <div className={`${bgColor} rounded-t-lg shadow-lg overflow-hidden`}>
+        <div className="px-6 py-8 text-white">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl font-bold">{title}</h1>
+              <p className={`mt-2 ${textColor}`}>{description}</p>
+            </div>
+            {actions && (
+              <div className="ml-4">
+                {actions}
+              </div>
+            )}
           </div>
-        </main>
+        </div>
       </div>
       
-      {/* Footer */}
-      <Footer />
+      {/* Content section */}
+      <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-lg p-6">
+        {children}
+      </div>
     </div>
   );
 };
 
-export default Layout; 
+export default PageLayout;

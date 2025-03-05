@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { FiCheckCircle, FiAlertTriangle, FiLock } from 'react-icons/fi';
 
 const HipaaConsent = () => {
-  const { submitHipaaConsent } = useAuth();
+  const { acceptHipaaConsent } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ const HipaaConsent = () => {
       setLoading(true);
       setError('');
       
-      await submitHipaaConsent();
+      await acceptHipaaConsent();
       
       // Redirect to the page they were trying to access
       navigate(from, { replace: true });
@@ -179,4 +179,4 @@ const HipaaConsent = () => {
   );
 };
 
-export default HipaaConsent; 
+export default HipaaConsent;

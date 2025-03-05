@@ -1,160 +1,157 @@
+// src/components/appointments/AppointmentForm.js
 import React, { useState, useEffect } from 'react';
+import { useAppointments } from '../../contexts/AppointmentContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiCalendar, FiClock, FiUser, FiFileText, FiX, FiCheck } from 'react-icons/fi';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import { format, addMinutes, set } from 'date-fns';
 
-const AppointmentForm = ({ appointment, onClose }) => {
+// Mock data for providers - in a real app this would come from an API
+const PROVIDERS = [
+  { id: 'provider-1', name: 'Dr. Sarah Johnson', specialty: 'Primary Care' },
+  { id: 'provider-2', name: 'Dr. Robert Chen', specialty: 'Cardiology' },
+  { id: 'provider-3', name: 'Dr. Maria Rodriguez', specialty: 'Pediatrics' },
+];
+
+// Mock data for appointment types - in a real app this would come from an API
+const APPOINTMENT_TYPES = [
+  { id: 'annual-physical', name: 'Annual Physical', duration: 30 },
+  { id: 'follow-up', name: 'Follow-up Visit', duration: 15 },
+  { id: 'consultation', name: 'New Patient Consultation', duration: 45 },
+  { id: 'vaccination', name: 'Vaccination', duration: 15 },
+  { id: 'lab-results', name: 'Lab Results Review', duration: 20 },
+];
+
+// Mock data for locations - in a real app this would come from an API
+const LOCATIONS = [
+  { id: 'loc-1', name: 'Main Clinic - Room 101', address: '123 Healthcare Ave, Medical District, CA 90210' },
+  { id: 'loc-2', name: 'Main Clinic - Room 202', address: '123 Healthcare Ave, Medical District, CA 90210' },
+  { id: 'loc-3', name: 'Telehealth Virtual Room', address: 'Online' },
+];
+
+const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
+  const { createAppointment, updateAppointment, getAppointmentById } = useAppointments();
   const { currentUser } = useAuth();
-  const isEditing = !!appointment;
   
   const [formData, setFormData] = useState({
-    title: '',
-    startTime: new Date(),
-    endTime: new Date(new Date().setHours(new Date().getHours() + 1)),
     providerId: '',
-    patientId: '',
+    appointmentType: '',
+    title: '',
+    description: '',
+    date: format(new Date(), 'yyyy-MM-dd'),
+    time: '09:00',
+    duration: 30,
+    locationId: '',
     notes: '',
-    type: 'general',
-    location: 'in-person',
-    status: 'scheduled'
   });
   
-  const [providers, setProviders] = useState([]);
-  const [patients, setPatients] = useState([]);
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
   
+  // If appointmentId is provided, load existing appointment data
   useEffect(() => {
-    // If editing, populate form with appointment data
-    if (isEditing && appointment) {
-      setFormData({
-        title: appointment.title || '',
-        startTime: new Date(appointment.startTime),
-        endTime: new Date(appointment.endTime),
-        providerId: appointment.provider?._id || '',
-        patientId: appointment.patient?._id || '',
-        notes: appointment.notes || '',
-        type: appointment.type || 'general',
-        location: appointment.location || 'in-person',
-        status: appointment.status || 'scheduled'
-      });
-    }
-    
-    // Load providers and patients based on user role
-    fetchUsersForAppointment();
-  }, [appointment]);
-  
-  const fetchUsersForAppointment = async () => {
-    setLoading(true);
-    try {
-      // If user is a patient, fetch providers
-      if (currentUser.role === 'patient') {
-        const response = await fetch('/api/users/providers', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+    if (appointmentId) {
+      const appointment = getAppointmentById(appointmentId);
+      
+      if (appointment) {
+        setIsEditing(true);
+        
+        // Extract time parts from the appointment
+        const startDate = new Date(appointment.startTime);
+        
+        // Calculate duration in minutes
+        const endDate = new Date(appointment.endTime);
+        const durationMs = endDate.getTime() - startDate.getTime();
+        const durationMinutes = Math.round(durationMs / (1000 * 60));
+        
+        // Format date and time for form inputs
+        const formattedDate = format(startDate, 'yyyy-MM-dd');
+        const formattedTime = format(startDate, 'HH:mm');
+        
+        // Set form data
+        setFormData({
+          providerId: appointment.providerId,
+          appointmentType: appointment.type || '',
+          title: appointment.title,
+          description: appointment.description || '',
+          date: formattedDate,
+          time: formattedTime,
+          duration: durationMinutes,
+          locationId: appointment.location?.id || '',
+          notes: appointment.notes || '',
         });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch providers');
-        }
-        
-        const data = await response.json();
-        setProviders(data);
-        
-        // Set current user as patient
+      }
+    } else {
+      // If creating a new appointment, set patient ID to current user if they're a patient
+      if (currentUser.role === 'patient') {
         setFormData(prev => ({
           ...prev,
-          patientId: currentUser._id
+          patientId: currentUser.id
         }));
-      } 
-      // If user is a provider, fetch patients
-      else if (currentUser.role === 'doctor' || currentUser.role === 'admin') {
-        const response = await fetch('/api/users/patients', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch patients');
-        }
-        
-        const data = await response.json();
-        setPatients(data);
-        
-        // Set current user as provider if they are a doctor
-        if (currentUser.role === 'doctor') {
-          setFormData(prev => ({
-            ...prev,
-            providerId: currentUser._id
-          }));
-        }
+      } else if (['doctor', 'nurse'].includes(currentUser.role)) {
+        // If provider is creating the appointment, set provider ID to current user
+        setFormData(prev => ({
+          ...prev,
+          providerId: currentUser.id
+        }));
       }
-    } catch (err) {
-      setError('Error loading users. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [appointmentId, getAppointmentById, currentUser]);
   
+  // Update form data
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleDateChange = (date, field) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: date
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     
-    // If changing start time, adjust end time to be 1 hour later
-    if (field === 'startTime') {
-      const endTime = new Date(date);
-      endTime.setHours(date.getHours() + 1);
-      setFormData(prev => ({
-        ...prev,
-        endTime
-      }));
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+    
+    // If appointment type changes, update duration
+    if (name === 'appointmentType') {
+      const selectedType = APPOINTMENT_TYPES.find(type => type.id === value);
+      if (selectedType) {
+        setFormData(prev => ({ ...prev, duration: selectedType.duration }));
+      }
     }
   };
   
+  // Validate form data
   const validateForm = () => {
-    if (!formData.title) {
-      setError('Please enter an appointment title');
-      return false;
+    const newErrors = {};
+    
+    // Required fields
+    const requiredFields = [
+      'providerId',
+      'appointmentType',
+      'title',
+      'date',
+      'time',
+      'locationId'
+    ];
+    
+    requiredFields.forEach(field => {
+      if (!formData[field]) {
+        newErrors[field] = 'This field is required';
+      }
+    });
+    
+    // If user is not a patient and patient ID is not set
+    if (!isEditing && !currentUser.role === 'patient' && !formData.patientId) {
+      newErrors.patientId = 'Please select a patient';
     }
     
-    if (!formData.startTime || !formData.endTime) {
-      setError('Please select a valid date and time');
-      return false;
+    // Validate date is not in the past
+    const appointmentDate = new Date(`${formData.date}T${formData.time}`);
+    if (appointmentDate < new Date()) {
+      newErrors.date = 'Appointment date and time cannot be in the past';
     }
     
-    if (formData.startTime >= formData.endTime) {
-      setError('End time must be after start time');
-      return false;
-    }
-    
-    if (currentUser.role !== 'patient' && !formData.patientId) {
-      setError('Please select a patient');
-      return false;
-    }
-    
-    if (currentUser.role !== 'doctor' && !formData.providerId) {
-      setError('Please select a provider');
-      return false;
-    }
-    
-    return true;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
   
+  // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -162,303 +159,245 @@ const AppointmentForm = ({ appointment, onClose }) => {
       return;
     }
     
+    setLoading(true);
+    
     try {
-      setSubmitting(true);
-      setError('');
+      // Calculate start and end times
+      const startTime = new Date(`${formData.date}T${formData.time}`);
+      const endTime = addMinutes(startTime, formData.duration);
       
-      const url = isEditing 
-        ? `/api/appointments/${appointment._id}` 
-        : '/api/appointments';
+      // Prepare appointment data
+      const appointmentData = {
+        patientId: formData.patientId || (currentUser.role === 'patient' ? currentUser.id : ''),
+        providerId: formData.providerId,
+        title: formData.title,
+        description: formData.description,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        type: formData.appointmentType,
+        location: LOCATIONS.find(loc => loc.id === formData.locationId),
+        notes: formData.notes
+      };
       
-      const method = isEditing ? 'PUT' : 'POST';
+      let result;
       
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save appointment');
+      if (isEditing) {
+        result = await updateAppointment(appointmentId, appointmentData);
+      } else {
+        result = await createAppointment(appointmentData);
       }
       
-      // Close the form on success
-      onClose();
+      if (result.success) {
+        if (onSuccess) {
+          onSuccess(result.appointment);
+        }
+      } else {
+        setErrors({ submit: result.message });
+      }
     } catch (err) {
-      setError(err.message || 'Error saving appointment. Please try again.');
-      console.error(err);
+      setErrors({ submit: err.message });
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
   
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-            {isEditing ? 'Edit Appointment' : 'New Appointment'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-          >
-            <FiX className="h-5 w-5" />
-          </button>
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <h2 className="text-xl font-semibold mb-4">
+        {isEditing ? 'Edit Appointment' : 'Schedule New Appointment'}
+      </h2>
+      
+      {errors.submit && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded">
+          {errors.submit}
         </div>
-        
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900 border-l-4 border-red-500 p-4 m-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <FiX className="h-5 w-5 text-red-500" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Appointment Title
+      )}
+      
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Provider Selection */}
+          <div className="col-span-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Healthcare Provider*
             </label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiFileText className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                name="title"
-                id="title"
-                value={formData.title}
-                onChange={handleChange}
-                className="pl-10 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                placeholder="e.g. Annual Check-up"
-              />
-            </div>
+            <select
+              name="providerId"
+              value={formData.providerId}
+              onChange={handleChange}
+              disabled={currentUser.role === 'doctor' || loading}
+              className={`w-full p-2 border rounded ${errors.providerId ? 'border-red-500' : 'border-gray-300'}`}
+            >
+              <option value="">Select Provider</option>
+              {PROVIDERS.map(provider => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name} - {provider.specialty}
+                </option>
+              ))}
+            </select>
+            {errors.providerId && (
+              <p className="mt-1 text-sm text-red-600">{errors.providerId}</p>
+            )}
           </div>
           
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Start Date & Time
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiCalendar className="h-5 w-5 text-gray-400" />
-                </div>
-                <DatePicker
-                  selected={formData.startTime}
-                  onChange={(date) => handleDateChange(date, 'startTime')}
-                  showTimeSelect
-                  timeFormat="HH:mm"
-                  timeIntervals={15}
-                  dateFormat="MMMM d, yyyy h:mm aa"
-                  className="pl-10 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  minDate={new Date()}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                End Date & Time
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiClock className="h-5 w-5 text-gray-400" />
-                </div>
-                <DatePicker
-                  selected={formData.endTime}
-                  onChange={(date) => handleDateChange(date, 'endTime')}
-                  showTimeSelect
-                  timeFormat="HH:mm"
-                  timeIntervals={15}
-                  dateFormat="MMMM d, yyyy h:mm aa"
-                  className="pl-10 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  minDate={formData.startTime}
-                />
-              </div>
-            </div>
+          {/* Appointment Type */}
+          <div className="col-span-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Appointment Type*
+            </label>
+            <select
+              name="appointmentType"
+              value={formData.appointmentType}
+              onChange={handleChange}
+              disabled={loading}
+              className={`w-full p-2 border rounded ${errors.appointmentType ? 'border-red-500' : 'border-gray-300'}`}
+            >
+              <option value="">Select Type</option>
+              {APPOINTMENT_TYPES.map(type => (
+                <option key={type.id} value={type.id}>
+                  {type.name} ({type.duration} mins)
+                </option>
+              ))}
+            </select>
+            {errors.appointmentType && (
+              <p className="mt-1 text-sm text-red-600">{errors.appointmentType}</p>
+            )}
           </div>
           
-          {currentUser.role !== 'patient' && (
-            <div>
-              <label htmlFor="patientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Patient
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiUser className="h-5 w-5 text-gray-400" />
-                </div>
-                <select
-                  name="patientId"
-                  id="patientId"
-                  value={formData.patientId}
-                  onChange={handleChange}
-                  className="pl-10 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  disabled={loading}
-                >
-                  <option value="">Select Patient</option>
-                  {patients.map(patient => (
-                    <option key={patient._id} value={patient._id}>
-                      {patient.firstName} {patient.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-          
-          {currentUser.role !== 'doctor' && (
-            <div>
-              <label htmlFor="providerId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Healthcare Provider
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiUser className="h-5 w-5 text-gray-400" />
-                </div>
-                <select
-                  name="providerId"
-                  id="providerId"
-                  value={formData.providerId}
-                  onChange={handleChange}
-                  className="pl-10 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  disabled={loading}
-                >
-                  <option value="">Select Provider</option>
-                  {providers.map(provider => (
-                    <option key={provider._id} value={provider._id}>
-                      Dr. {provider.firstName} {provider.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Appointment Type
-              </label>
-              <select
-                name="type"
-                id="type"
-                value={formData.type}
-                onChange={handleChange}
-                className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-              >
-                <option value="general">General Check-up</option>
-                <option value="specialist">Specialist Consultation</option>
-                <option value="follow-up">Follow-up</option>
-                <option value="emergency">Emergency</option>
-                <option value="procedure">Procedure</option>
-                <option value="lab">Lab Work</option>
-                <option value="imaging">Imaging</option>
-                <option value="therapy">Therapy</option>
-              </select>
-            </div>
-            
-            <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Location
-              </label>
-              <select
-                name="location"
-                id="location"
-                value={formData.location}
-                onChange={handleChange}
-                className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-              >
-                <option value="in-person">In-Person</option>
-                <option value="video">Video Call</option>
-                <option value="phone">Phone Call</option>
-                <option value="home">Home Visit</option>
-              </select>
-            </div>
+          {/* Appointment Title */}
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Appointment Title*
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              disabled={loading}
+              className={`w-full p-2 border rounded ${errors.title ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="e.g., Annual Physical Exam"
+            />
+            {errors.title && (
+              <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+            )}
           </div>
           
-          {isEditing && (
-            <div>
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Status
-              </label>
-              <select
-                name="status"
-                id="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-              >
-                <option value="scheduled">Scheduled</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="no-show">No Show</option>
-                <option value="rescheduled">Rescheduled</option>
-              </select>
-            </div>
-          )}
+          {/* Date and Time */}
+          <div className="col-span-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date*
+            </label>
+            <input
+              type="date"
+              name="date"
+              value={formData.date}
+              onChange={handleChange}
+              disabled={loading}
+              className={`w-full p-2 border rounded ${errors.date ? 'border-red-500' : 'border-gray-300'}`}
+              min={format(new Date(), 'yyyy-MM-dd')}
+            />
+            {errors.date && (
+              <p className="mt-1 text-sm text-red-600">{errors.date}</p>
+            )}
+          </div>
           
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="col-span-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Time*
+            </label>
+            <input
+              type="time"
+              name="time"
+              value={formData.time}
+              onChange={handleChange}
+              disabled={loading}
+              className={`w-full p-2 border rounded ${errors.time ? 'border-red-500' : 'border-gray-300'}`}
+              step="900" // 15-minute intervals
+            />
+            {errors.time && (
+              <p className="mt-1 text-sm text-red-600">{errors.time}</p>
+            )}
+          </div>
+          
+          {/* Duration */}
+          <div className="col-span-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Duration (minutes)
+            </label>
+            <input
+              type="number"
+              name="duration"
+              value={formData.duration}
+              onChange={handleChange}
+              disabled={loading}
+              className="w-full p-2 border border-gray-300 rounded"
+              min="5"
+              max="240"
+              step="5"
+            />
+          </div>
+          
+          {/* Location */}
+          <div className="col-span-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Location*
+            </label>
+            <select
+              name="locationId"
+              value={formData.locationId}
+              onChange={handleChange}
+              disabled={loading}
+              className={`w-full p-2 border rounded ${errors.locationId ? 'border-red-500' : 'border-gray-300'}`}
+            >
+              <option value="">Select Location</option>
+              {LOCATIONS.map(location => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+            {errors.locationId && (
+              <p className="mt-1 text-sm text-red-600">{errors.locationId}</p>
+            )}
+          </div>
+          
+          {/* Notes */}
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Notes
             </label>
             <textarea
               name="notes"
-              id="notes"
-              rows="3"
               value={formData.notes}
               onChange={handleChange}
-              className="mt-1 focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-              placeholder="Any additional information or special requests"
+              disabled={loading}
+              className="w-full p-2 border border-gray-300 rounded"
+              rows="3"
+              placeholder="Any special instructions or information for this appointment?"
             ></textarea>
           </div>
+        </div>
+        
+        {/* Form Actions */}
+        <div className="mt-6 flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
+          >
+            Cancel
+          </button>
           
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                submitting
-                  ? 'bg-primary-400 cursor-not-allowed'
-                  : 'bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
-              }`}
-            >
-              {submitting ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Saving...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <FiCheck className="mr-2" />
-                  {isEditing ? 'Update Appointment' : 'Create Appointment'}
-                </span>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700"
+          >
+            {loading ? 'Processing...' : isEditing ? 'Update Appointment' : 'Schedule Appointment'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
