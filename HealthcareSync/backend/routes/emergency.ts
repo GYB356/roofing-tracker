@@ -1,6 +1,7 @@
 import express from 'express';
 import { prisma } from '../../lib/prisma';
 import { requireAuth } from '../middleware/auth';
+import { EmergencyService, AlertThreshold } from '../services/emergency-service';
 
 const router = express.Router();
 
@@ -53,80 +54,52 @@ router.post('/', requireAuth, async (req, res) => {
       })
     );
 
-    // In a real system, you would also trigger push notifications, SMS, etc.
-
-    res.status(201).json({ 
-      message: 'Emergency alerts created successfully',
-      count: createdAlerts.length 
-    });
+    res.json(createdAlerts);
   } catch (error) {
     console.error('Error creating emergency alert:', error);
     res.status(500).json({ message: 'Failed to create emergency alert' });
   }
 });
 
-// Mark emergency alert as read
-router.patch('/:id/read', requireAuth, async (req, res) => {
+// Set vital sign thresholds for a patient
+router.post('/thresholds/:patientId', requireAuth, async (req, res) => {
   try {
-    const { id } = req.params;
+    const patientId = parseInt(req.params.patientId);
+    const thresholds: AlertThreshold[] = req.body.thresholds;
 
-    const updatedAlert = await prisma.notification.update({
-      where: { 
-        id,
-        type: 'ALERT'
-      },
-      data: {
-        read: true
-      }
-    });
+    if (!Array.isArray(thresholds)) {
+      return res.status(400).json({ message: 'Invalid thresholds data' });
+    }
 
-    res.json(updatedAlert);
+    EmergencyService.setVitalSignThresholds(patientId, thresholds);
+    res.json({ message: 'Thresholds updated successfully' });
   } catch (error) {
-    console.error('Error updating emergency alert:', error);
-    res.status(500).json({ message: 'Failed to update emergency alert' });
+    console.error('Error setting vital sign thresholds:', error);
+    res.status(500).json({ message: 'Failed to set vital sign thresholds' });
   }
 });
 
-// Escalate an emergency alert
-router.post('/:id/escalate', requireAuth, async (req, res) => {
+// Get vital sign thresholds for a patient
+router.get('/thresholds/:patientId', requireAuth, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { escalationLevel, notes } = req.body;
-
-    const alert = await prisma.notification.findUnique({
-      where: { id }
-    });
-
-    if (!alert || alert.type !== 'ALERT') {
-      return res.status(404).json({ message: 'Alert not found' });
-    }
-
-    // Update alert metadata with escalation info
-    const metadata = {
-      ...alert.metadata as object,
-      escalated: true,
-      escalationLevel,
-      escalationNotes: notes,
-      escalatedAt: new Date().toISOString(),
-      escalatedBy: req.user.id
-    };
-
-    const updatedAlert = await prisma.notification.update({
-      where: { id },
-      data: {
-        metadata
-      }
-    });
-
-    // In a real system, trigger additional notifications based on escalation level
-
-    res.json({
-      message: 'Alert escalated successfully',
-      alert: updatedAlert
-    });
+    const patientId = parseInt(req.params.patientId);
+    const thresholds = EmergencyService.getVitalSignThresholds(patientId);
+    res.json(thresholds);
   } catch (error) {
-    console.error('Error escalating emergency alert:', error);
-    res.status(500).json({ message: 'Failed to escalate emergency alert' });
+    console.error('Error getting vital sign thresholds:', error);
+    res.status(500).json({ message: 'Failed to get vital sign thresholds' });
+  }
+});
+
+// Monitor vital signs
+router.post('/monitor', requireAuth, async (req, res) => {
+  try {
+    const vitalSign = req.body;
+    await EmergencyService.monitorVitalSigns(vitalSign);
+    res.json({ message: 'Vital signs monitored successfully' });
+  } catch (error) {
+    console.error('Error monitoring vital signs:', error);
+    res.status(500).json({ message: 'Failed to monitor vital signs' });
   }
 });
 

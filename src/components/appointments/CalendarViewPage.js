@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiList, FiCalendar, FiChevronLeft, FiChevronRight, FiArrowLeft, FiMapPin } from 'react-icons/fi';
+import { FiPlus, FiList, FiCalendar, FiChevronLeft, FiChevronRight, FiMapPin } from 'react-icons/fi';
 
 // Inline PageLayout component
 const PageLayout = ({ 

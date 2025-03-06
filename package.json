@@ -7,6 +7,7 @@
     "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^14.4.3",
     "chart.js": "^4.3.0",
+    "crypto-js": "^4.2.0",
     "date-fns": "^2.30.0",
     "formik": "^2.2.9",
     "jwt-decode": "^3.1.2",
@@ -22,7 +23,7 @@
     "yup": "^1.1.1"
   },
   "scripts": {
-    "start": "DANGEROUSLY_DISABLE_HOST_CHECK=true react-scripts start",
+    "start": "set DANGEROUSLY_DISABLE_HOST_CHECK=true && react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",

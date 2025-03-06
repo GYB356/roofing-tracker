@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import authService from '../services/authService';
+import auditLogService from '../services/auditLogService';
 
 // Create the auth context
 const AuthContext = createContext(null);
@@ -18,39 +20,26 @@ export const AuthProvider = ({ children }) => {
     const checkAuthStatus = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
         
-        if (!token) {
+        // Check if token exists and is valid
+        if (!authService.isAuthenticated()) {
           setIsAuthenticated(false);
           setCurrentUser(null);
           setLoading(false);
           return;
         }
         
-        // Get the user from localStorage based on the token
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const currentUserId = localStorage.getItem('currentUserId');
+        // Get current user data from API
+        const userData = await authService.getCurrentUser();
         
-        if (!currentUserId) {
+        if (!userData) {
           setIsAuthenticated(false);
           setCurrentUser(null);
-          localStorage.removeItem('token');
           setLoading(false);
           return;
         }
         
-        const user = users.find(u => u.id === currentUserId);
-        
-        if (!user) {
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-          localStorage.removeItem('token');
-          localStorage.removeItem('currentUserId');
-          setLoading(false);
-          return;
-        }
-        
-        setCurrentUser(user);
+        setCurrentUser(userData);
         setIsAuthenticated(true);
       } catch (err) {
         console.error('Authentication check failed:', err);
@@ -71,30 +60,29 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Store user data in localStorage
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const existingUser = users.find(user => user.email === userData.email);
-      
-      if (existingUser) {
-        throw new Error('User with this email already exists');
+      // Validate role
+      const validRoles = ['patient', 'provider', 'admin'];
+      if (!validRoles.includes(userData.role)) {
+        userData.role = 'patient'; // Default to patient if invalid role
       }
       
-      // Create a new user with an ID and store in localStorage
-      const newUser = {
-        ...userData,
-        id: Date.now().toString(),
-        hipaaConsent: { status: 'pending', date: null },
-        emailVerified: true // Setting to true for testing convenience
-      };
+      // Call the register API endpoint
+      const result = await authService.register(userData);
       
-      users.push(newUser);
-      localStorage.setItem('users', JSON.stringify(users));
+      // Log successful registration
+      await auditLogService.logAuthentication('register', result.userId || 'new-user', true, {
+        email: userData.email,
+        role: userData.role
+      });
       
-      return { success: true, message: 'Registration successful. Please check your email to verify your account.' };
+      return { success: true, message: result.message || 'Registration successful. Please check your email to verify your account.' };
     } catch (err) {
+      // Log failed registration
+      await auditLogService.logAuthentication('register', 'unknown', false, {
+        email: userData.email,
+        error: err.message
+      });
+      
       setError(err.message || 'Registration failed. Please try again.');
       return { success: false, message: err.message || 'Registration failed. Please try again.' };
     } finally {
@@ -107,27 +95,18 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Call the login API endpoint
+      const result = await authService.login(email, password, rememberMe);
       
-      // Get users from localStorage
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const user = users.find(u => u.email === email);
-      
-      if (!user || user.password !== password) {
-        throw new Error('Invalid credentials');
-      }
-      
-      // Create a mock token
-      const token = `mock-token-${Date.now()}`;
-      localStorage.setItem('token', token);
-      localStorage.setItem('currentUserId', user.id);
-      
-      // If rememberMe is true, we could set a longer expiration
-      localStorage.setItem('rememberMe', rememberMe);
-      
-      setCurrentUser(user);
+      // Set current user and authentication state
+      setCurrentUser(result.user);
       setIsAuthenticated(true);
+      
+      // Log successful authentication
+      await auditLogService.logAuthentication('login', result.user.id, true, {
+        email: email,
+        rememberMe: rememberMe
+      });
       
       // Redirect to the page the user was trying to access, or to the dashboard
       const origin = location.state?.from?.pathname || '/';
@@ -135,6 +114,12 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (err) {
+      // Log failed authentication attempt
+      await auditLogService.logAuthentication('login', 'unknown', false, {
+        email: email,
+        error: err.message
+      });
+      
       setError(err.message || 'Login failed. Please check your credentials and try again.');
       return { 
         success: false, 
@@ -145,23 +130,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = useCallback(() => {
-    setLoading(true);
-    
-    // Simulate network delay
-    setTimeout(() => {
-      // Clear token and user data
-      localStorage.removeItem('token');
-      localStorage.removeItem('currentUserId');
+  const logout = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Log logout event before clearing user data
+      const userId = localStorage.getItem('currentUserId');
+      if (userId) {
+        await auditLogService.logAuthentication('logout', userId, true);
+      }
+      
+      // Call the logout API endpoint
+      await authService.logout();
       
       // Clear user state
       setCurrentUser(null);
       setIsAuthenticated(false);
-      setLoading(false);
       
       // Redirect to login page
       navigate('/login');
-    }, 500);
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [navigate]);
 
   const acceptHipaaConsent = async () => {
@@ -169,33 +161,29 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Call the HIPAA consent API endpoint
+      const result = await authService.acceptHipaaConsent();
       
-      // Get users from localStorage
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const userIndex = users.findIndex(u => u.id === currentUser.id);
-      
-      if (userIndex === -1) {
-        throw new Error('User not found');
+      // Update current user with new HIPAA consent status
+      if (result.success) {
+        setCurrentUser({ 
+          ...currentUser, 
+          hipaaConsent: { 
+            status: 'accepted', 
+            date: new Date().toISOString() 
+          } 
+        });
+        
+        // Log HIPAA consent acceptance
+        await auditLogService.createLog(
+          auditLogService.LOG_TYPES.SYSTEM,
+          'hipaa_consent_accepted',
+          {
+            userId: currentUser.id,
+            timestamp: new Date().toISOString()
+          }
+        );
       }
-      
-      // Update HIPAA consent
-      users[userIndex].hipaaConsent = { 
-        status: 'accepted', 
-        date: new Date().toISOString() 
-      };
-      
-      localStorage.setItem('users', JSON.stringify(users));
-      
-      // Update current user
-      setCurrentUser({ 
-        ...currentUser, 
-        hipaaConsent: { 
-          status: 'accepted', 
-          date: new Date().toISOString() 
-        } 
-      });
       
       // Redirect to the page the user was trying to access, or to the dashboard
       const origin = location.state?.from?.pathname || '/';

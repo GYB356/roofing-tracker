@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   FiHome,
@@ -14,37 +14,94 @@ import {
   FiChevronRight,
   FiChevronDown,
   FiMenu,
-  FiX
+  FiX,
+  FiUsers,
+  FiBarChart2,
+  FiLogOut
 } from 'react-icons/fi';
 
 const Sidebar = () => {
   const location = useLocation();
-  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState({
-    appointments: false,
-    medicalRecords: false,
-    billing: false
-  });
-
+  const [expandedMenus, setExpandedMenus] = useState({});
+  const [activeSubmenu, setActiveSubmenu] = useState(null);
+  const hasAccess = (roles) => {
+    if (!currentUser || !roles) return false;
+    
+    // Super admin has access to everything
+    if (currentUser.role === 'admin') return true;
+    
+    // Check if user has required role
+    if (roles.includes(currentUser.role)) {
+      // Additional HIPAA compliance check for sensitive routes
+      const requiresHipaaConsent = ['doctor', 'nurse'].includes(currentUser.role);
+      if (requiresHipaaConsent && (!currentUser.hipaaConsent || currentUser.hipaaConsent.status !== 'accepted')) {
+        return false;
+      }
+      return true;
+    }
+    
+    return false;
+  };
   const toggleMenu = (menu) => {
     setExpandedMenus(prev => ({
       ...prev,
       [menu]: !prev[menu]
     }));
+    setActiveSubmenu(expandedMenus[menu] ? null : menu);
   };
-
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
-
+  const handleMobileMenuToggle = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
+  const handleKeyDown = (e, menu) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleMenu(menu);
+    } else if (e.key === 'Escape') {
+      setExpandedMenus(prev => ({ ...prev, [menu]: false }));
+      setActiveSubmenu(null);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const menuItems = document.querySelectorAll('[role="menuitem"]');
+      const currentIndex = Array.from(menuItems).findIndex(item => item === document.activeElement);
+      const nextIndex = e.key === 'ArrowDown' 
+        ? (currentIndex + 1) % menuItems.length
+        : (currentIndex - 1 + menuItems.length) % menuItems.length;
+      menuItems[nextIndex].focus();
+    }
+  };
+  const handleSubmenuKeyDown = (e, path) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      closeMobileMenu();
+    } else if (e.key === 'Escape') {
+      setActiveSubmenu(null);
+      e.currentTarget.closest('[role="menuitem"]').focus();
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const nextSubmenuItem = e.currentTarget.nextElementSibling;
+      if (nextSubmenuItem) nextSubmenuItem.focus();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prevSubmenuItem = e.currentTarget.previousElementSibling;
+      if (prevSubmenuItem) prevSubmenuItem.focus();
+    }
+  };
   const menuItems = [
     {
       name: 'Dashboard',
       icon: <FiHome className="w-5 h-5" />,
       path: '/',
-      exact: true
+      roles: ['admin', 'doctor', 'nurse', 'patient', 'staff']
     },
     {
       name: 'Appointments',
@@ -52,10 +109,11 @@ const Sidebar = () => {
       path: '/appointments',
       hasSubmenu: true,
       submenuKey: 'appointments',
+      roles: ['admin', 'doctor', 'nurse', 'patient', 'staff'],
       submenu: [
-        { name: 'My Appointments', path: '/appointments' },
+        { name: 'View All', path: '/appointments' },
         { name: 'Schedule New', path: '/appointments/new' },
-        { name: 'Calendar View', path: '/appointments/calendar' }
+        { name: 'Calendar', path: '/appointments/calendar' }
       ]
     },
     {
@@ -64,9 +122,9 @@ const Sidebar = () => {
       path: '/medical-records',
       hasSubmenu: true,
       submenuKey: 'medicalRecords',
+      roles: ['admin', 'doctor', 'nurse'],
       submenu: [
-        { name: 'Health Summary', path: '/medical-records' },
-        { name: 'Medications', path: '/medical-records/medications' },
+        { name: 'Patient Records', path: '/medical-records' },
         { name: 'Lab Results', path: '/medical-records/lab-results' },
         { name: 'Imaging', path: '/medical-records/imaging' }
       ]
@@ -74,12 +132,14 @@ const Sidebar = () => {
     {
       name: 'Messages',
       icon: <FiMessageSquare className="w-5 h-5" />,
-      path: '/messages'
+      path: '/messages',
+      roles: ['admin', 'doctor', 'nurse', 'patient', 'staff']
     },
     {
       name: 'Telemedicine',
       icon: <FiVideo className="w-5 h-5" />,
-      path: '/telemedicine'
+      path: '/telemedicine',
+      roles: ['admin', 'doctor', 'patient']
     },
     {
       name: 'Billing',
@@ -87,54 +147,72 @@ const Sidebar = () => {
       path: '/billing',
       hasSubmenu: true,
       submenuKey: 'billing',
+      roles: ['admin', 'staff', 'patient'],
       submenu: [
         { name: 'Invoices', path: '/billing/invoices' },
-        { name: 'Payment Methods', path: '/billing/payment-methods' }
+        { name: 'Payments', path: '/billing/payments' },
+        { name: 'Insurance', path: '/billing/insurance' }
       ]
+    },
+    {
+      name: 'Staff Management',
+      icon: <FiUsers className="w-5 h-5" />,
+      path: '/staff',
+      roles: ['admin']
+    },
+    {
+      name: 'Analytics',
+      icon: <FiBarChart2 className="w-5 h-5" />,
+      path: '/analytics',
+      roles: ['admin']
     },
     {
       name: 'Health Metrics',
       icon: <FiActivity className="w-5 h-5" />,
-      path: '/health-metrics'
+      path: '/health-metrics',
+      roles: ['admin', 'doctor', 'nurse', 'patient']
     },
     {
       name: 'Settings',
       icon: <FiSettings className="w-5 h-5" />,
-      path: '/settings'
+      path: '/settings',
+      roles: ['admin', 'doctor', 'nurse', 'patient', 'staff']
     }
   ];
-
   return (
     <>
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-white bg-blue-600 hover:bg-blue-700 rounded-lg p-2"
-        >
-          {mobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
-        </button>
-      </div>
+      <button
+        aria-label="Toggle mobile menu"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onClick={handleMobileMenuToggle}
+      >
+        {mobileMenuOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
+      </button>
 
-      {/* Overlay for mobile menu */}
       {mobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        ></div>
+          onClick={closeMobileMenu}
+          aria-hidden="true"
+        />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 transition-all duration-300 transform bg-gray-900 text-white 
+        className={`fixed inset-y-0 left-0 z-40 transition-all duration-300 transform bg-gray-900 text-white
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           ${isCollapsed ? 'w-20' : 'w-64'}
           lg:relative lg:translate-x-0 lg:flex lg:flex-col
         `}
+        role="navigation"
+        aria-label="Main navigation"
       >
-        {/* Sidebar header */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
-          <Link to="/" className="flex items-center">
+          <Link 
+            to="/" 
+            className="flex items-center" 
+            onClick={closeMobileMenu}
+            aria-label="Go to homepage"
+          >
             <img
               src="/logo.png"
               alt="HealthcareSync Logo"
@@ -149,33 +227,36 @@ const Sidebar = () => {
             )}
           </Link>
           <button
+            aria-label="Toggle sidebar collapse"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1 rounded-md hover:bg-gray-800 lg:block hidden"
+            className="p-1 rounded-md hover:bg-gray-800 lg:block hidden focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {isCollapsed ? <FiChevronRight /> : <FiChevronDown />}
           </button>
         </div>
-
-        {/* Navigation */}
         <nav className="flex-1 px-2 py-4 overflow-y-auto">
-          <ul className="space-y-1">
-            {menuItems.map((item, index) => (
-              <li key={index}>
+          <ul className="space-y-1" role="menu">
+            {menuItems.filter(item => hasAccess(item.roles)).map((item, index) => (
+              <li key={index} role="none">
                 {item.hasSubmenu ? (
                   <div>
                     <button
                       onClick={() => toggleMenu(item.submenuKey)}
+                      onKeyDown={(e) => handleKeyDown(e, item.submenuKey)}
                       className={`flex items-center w-full px-4 py-3 text-left rounded-lg transition-colors
                         ${isActive(item.path) ? 'bg-blue-700' : 'hover:bg-gray-800'}
                         ${isCollapsed ? 'justify-center' : 'justify-between'}
                       `}
+                      aria-expanded={expandedMenus[item.submenuKey]}
+                      aria-controls={`submenu-${item.submenuKey}`}
+                      role="menuitem"
                     >
                       <div className="flex items-center">
                         {item.icon}
                         {!isCollapsed && <span className="ml-3">{item.name}</span>}
                       </div>
                       {!isCollapsed && (
-                        <span>
+                        <span aria-hidden="true">
                           {expandedMenus[item.submenuKey] ? (
                             <FiChevronDown className="w-4 h-4" />
                           ) : (
@@ -185,14 +266,22 @@ const Sidebar = () => {
                       )}
                     </button>
                     {expandedMenus[item.submenuKey] && !isCollapsed && (
-                      <ul className="mt-1 pl-4 space-y-1">
+                      <ul 
+                        id={`submenu-${item.submenuKey}`}
+                        className="mt-1 pl-4 space-y-1"
+                        role="menu"
+                        aria-label={`${item.name} submenu`}
+                      >
                         {item.submenu.map((subItem, subIndex) => (
-                          <li key={subIndex}>
+                          <li key={subIndex} role="none">
                             <Link
                               to={subItem.path}
+                              onClick={closeMobileMenu}
+                              onKeyDown={(e) => handleSubmenuKeyDown(e, subItem.path)}
                               className={`flex items-center pl-8 pr-4 py-2 rounded-lg transition-colors
                                 ${isActive(subItem.path) ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'}
                               `}
+                              role="menuitem"
                             >
                               {subItem.name}
                             </Link>
@@ -204,10 +293,12 @@ const Sidebar = () => {
                 ) : (
                   <Link
                     to={item.path}
+                    onClick={closeMobileMenu}
                     className={`flex items-center px-4 py-3 rounded-lg transition-colors
                       ${isActive(item.path) ? 'bg-blue-700' : 'hover:bg-gray-800'}
                       ${isCollapsed ? 'justify-center' : ''}
                     `}
+                    role="menuitem"
                   >
                     {item.icon}
                     {!isCollapsed && <span className="ml-3">{item.name}</span>}
@@ -218,15 +309,31 @@ const Sidebar = () => {
           </ul>
         </nav>
 
-        {/* Bottom help section */}
         <div className="p-4 border-t border-gray-800">
           <Link
             to="/help"
+            onClick={closeMobileMenu}
             className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors"
+            role="menuitem"
           >
             <FiHelpCircle className="w-5 h-5" />
             {!isCollapsed && <span className="ml-3">Help & Support</span>}
           </Link>
+          
+          {currentUser && (
+            <button
+              onClick={() => {
+                logout();
+                closeMobileMenu();
+              }}
+              className="flex items-center w-full px-4 py-3 mt-2 text-left rounded-lg hover:bg-gray-800 transition-colors text-red-400 hover:text-red-300"
+              role="menuitem"
+              aria-label="Logout"
+            >
+              <FiLogOut className="w-5 h-5" />
+              {!isCollapsed && <span className="ml-3">Logout</span>}
+            </button>
+          )}
         </div>
       </aside>
     </>

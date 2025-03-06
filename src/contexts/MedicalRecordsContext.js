@@ -1,7 +1,7 @@
 // src/contexts/MedicalRecordsContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { secureStorage, auditLog, hasPermission } from '../utils/security';
+import { encryptData, decryptData, logHIPAAAction, checkHIPAAAccess, sanitizeForLogging } from '../utils/hipaaCompliance';
 
 const MedicalRecordsContext = createContext(null);
 
@@ -20,30 +20,34 @@ export const MedicalRecordsProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         
-        // Get records from secure storage
-        const allRecords = secureStorage.getItem('medicalRecords') || [];
+        // Get encrypted records from secure storage
+        const encryptedRecords = localStorage.getItem('medicalRecords') || '[]';
+        const allRecords = JSON.parse(decryptData(encryptedRecords));
         
-        // Filter records based on user permissions
+        // Filter records based on HIPAA permissions
         let userRecords = [];
         
-        if (hasPermission(currentUser, 'read_all')) {
-          // Admins can see all records
-          userRecords = allRecords;
-        } else if (hasPermission(currentUser, 'read_patients')) {
-          // Doctors and nurses can see their patients' records
-          userRecords = allRecords.filter(record => 
-            record.providerId === currentUser.id ||
-            record.assignedProviders?.includes(currentUser.id)
-          );
-        } else if (hasPermission(currentUser, 'read_own')) {
+        if (checkHIPAAAccess(currentUser)) {
+          if (currentUser.role === 'admin') {
+            // Admins can see all records
+            userRecords = allRecords;
+          } else if (['doctor', 'nurse'].includes(currentUser.role)) {
+            // Healthcare providers can see their patients' records
+            userRecords = allRecords.filter(record => 
+              record.providerId === currentUser.id ||
+              record.assignedProviders?.includes(currentUser.id)
+            );
+          }
+        } else if (currentUser.role === 'patient') {
           // Patients can only see their own records
           userRecords = allRecords.filter(record => record.patientId === currentUser.id);
         }
         
-        // Log this access for auditing
-        auditLog('access_medical_records', {
+        // Log this access for HIPAA auditing
+        await logHIPAAAction('access_medical_records', {
           recordCount: userRecords.length,
-          accessType: 'list'
+          accessType: 'list',
+          userRole: currentUser.role
         }, currentUser.id);
         
         setRecords(userRecords);
@@ -63,11 +67,12 @@ export const MedicalRecordsProvider = ({ children }) => {
     const record = records.find(r => r.id === recordId);
     
     if (record) {
-      // Log this access for auditing
-      auditLog('access_medical_record', {
+      // Log this access for HIPAA auditing
+      await logHIPAAAction('access_medical_record', {
         recordId,
         patientId: record.patientId,
-        accessType: 'detail'
+        accessType: 'detail',
+        userRole: currentUser.role
       }, currentUser.id);
     }
     
@@ -97,18 +102,20 @@ export const MedicalRecordsProvider = ({ children }) => {
       const allRecords = secureStorage.getItem('medicalRecords') || [];
       allRecords.push(newRecord);
       
-      // Save to secure storage
-      secureStorage.setItem('medicalRecords', allRecords);
+      // Encrypt and save to storage
+      const encryptedRecords = encryptData(allRecords);
+      localStorage.setItem('medicalRecords', encryptedRecords);
       
       // Update state
       setRecords(prevRecords => [...prevRecords, newRecord]);
       
-      // Log this action for auditing
-      auditLog('create_medical_record', {
+      // Log this action for HIPAA auditing
+      await logHIPAAAction('create_medical_record', sanitizeForLogging({
         recordId: newRecord.id,
         patientId: newRecord.patientId,
-        recordType: newRecord.type
-      }, currentUser.id);
+        recordType: newRecord.type,
+        userRole: currentUser.role
+      }), currentUser.id);
       
       return { success: true, record: newRecord };
     } catch (err) {
@@ -163,12 +170,13 @@ export const MedicalRecordsProvider = ({ children }) => {
         return newRecords;
       });
       
-      // Log this action for auditing
-      auditLog('update_medical_record', {
+      // Log this action for HIPAA auditing
+      await logHIPAAAction('update_medical_record', sanitizeForLogging({
         recordId: updatedRecord.id,
         patientId: updatedRecord.patientId,
-        fields: Object.keys(updates)
-      }, currentUser.id);
+        fields: Object.keys(updates),
+        userRole: currentUser.role
+      }), currentUser.id);
       
       return { success: true, record: updatedRecord };
     } catch (err) {
@@ -212,12 +220,13 @@ export const MedicalRecordsProvider = ({ children }) => {
       // Update state - remove from current view
       setRecords(prevRecords => prevRecords.filter(r => r.id !== recordId));
       
-      // Log this action for auditing
-      auditLog('delete_medical_record', {
+      // Log this action for HIPAA auditing
+      await logHIPAAAction('delete_medical_record', sanitizeForLogging({
         recordId: record.id,
         patientId: record.patientId,
-        recordType: record.type
-      }, currentUser.id);
+        recordType: record.type,
+        userRole: currentUser.role
+      }), currentUser.id);
       
       return { success: true };
     } catch (err) {

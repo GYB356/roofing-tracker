@@ -240,7 +240,7 @@ const Register = () => {
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
               >
                 <option value="patient">Patient</option>
-                <option value="doctor">Healthcare Provider</option>
+                <option value="provider">Healthcare Provider</option>
                 <option value="admin">Administrator</option>
               </select>
             </div>
@@ -303,4 +303,4 @@ const Register = () => {
   );
 };
 
-export default Register; 
+export default Register;

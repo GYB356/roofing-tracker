@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import Dashboard from './components/dashboard/Dashboard';
 import Sidebar from './components/layout/Sidebar';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import VerifyEmailSent from './components/auth/VerifyEmailSent';
 
 // Main page components
 import AppointmentsPage from './components/appointments/AppointmentsPage';
@@ -64,45 +68,77 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div style={appContainerStyle}>
-          <Sidebar />
-          <main style={contentStyle}>
-            <Routes>
-              {/* Main routes */}
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Navigate to="/" replace />} />
-              
-              {/* Appointments routes */}
-              <Route path="/appointments" element={<AppointmentsPage />} />
-              <Route path="/appointments/new" element={<ScheduleNewPage />} />
-              <Route path="/appointments/calendar" element={<CalendarViewPage />} />
-              
-              {/* Medical Records routes */}
-              <Route path="/medical-records" element={<MedicalRecordsPage />} />
-              <Route path="/medical-records/health-summary" element={<HealthSummaryPage />} />
-              <Route path="/medical-records/medications" element={<MedicationsPage />} />
-              <Route path="/medical-records/lab-results" element={<LabResultsPage />} />
-              <Route path="/medical-records/imaging" element={<ImagingPage />} />
-              
-              {/* Messages route */}
-              <Route path="/messages" element={<MessagesPage />} />
-              
-              {/* Telemedicine route */}
-              <Route path="/telemedicine" element={<TelemedicinePage />} />
-              
-              {/* Billing routes */}
-              <Route path="/billing" element={<BillingPage />} />
-              <Route path="/billing/invoices" element={<InvoicesPage />} />
-              <Route path="/billing/payment-methods" element={<PaymentMethodsPage />} />
-              
-              {/* Health Metrics route */}
-              <Route path="/health-metrics" element={<HealthMetricsPage />} />
-              
-              {/* Catch-all route for 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-        </div>
+        <Routes>
+          {/* Auth routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify-email-sent" element={<VerifyEmailSent />} />
+          
+          {/* Protected routes */}
+          <Route path="/*" element={
+            <ProtectedRoute>
+              <div style={appContainerStyle}>
+                <Sidebar />
+                <main style={contentStyle}>
+                  <Routes>
+                    {/* Main routes */}
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                
+                    {/* Appointments routes */}
+                    <Route path="/appointments" element={<AppointmentsPage />} />
+                    <Route path="/appointments/new" element={<ScheduleNewPage />} />
+                    <Route path="/appointments/calendar" element={<CalendarViewPage />} />
+                    
+                    {/* Medical Records routes - restricted to admin, doctor, nurse */}
+                    <Route path="/medical-records" element={
+                      <ProtectedRoute allowedRoles={['admin', 'provider']}>
+                        <MedicalRecordsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/medical-records/health-summary" element={
+                      <ProtectedRoute allowedRoles={['admin', 'provider']}>
+                        <HealthSummaryPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/medical-records/medications" element={
+                      <ProtectedRoute allowedRoles={['admin', 'provider']}>
+                        <MedicationsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/medical-records/lab-results" element={
+                      <ProtectedRoute allowedRoles={['admin', 'provider']}>
+                        <LabResultsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/medical-records/imaging" element={
+                      <ProtectedRoute allowedRoles={['admin', 'provider']}>
+                        <ImagingPage />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* Messages route */}
+                    <Route path="/messages" element={<MessagesPage />} />
+                    
+                    {/* Telemedicine route */}
+                    <Route path="/telemedicine" element={<TelemedicinePage />} />
+                    
+                    {/* Billing routes */}
+                    <Route path="/billing" element={<BillingPage />} />
+                    <Route path="/billing/invoices" element={<InvoicesPage />} />
+                    <Route path="/billing/payment-methods" element={<PaymentMethodsPage />} />
+                    
+                    {/* Health Metrics route */}
+                    <Route path="/health-metrics" element={<HealthMetricsPage />} />
+                    
+                    {/* Catch-all route for 404 */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </main>
+              </div>
+            </ProtectedRoute>
+          } />
+        </Routes>
       </AuthProvider>
     </Router>
   );
