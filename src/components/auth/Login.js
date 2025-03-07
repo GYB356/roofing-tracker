@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiLogIn, FiAlertTriangle, FiLock, FiMail } from 'react-icons/fi';
+import { FiLogIn, FiAlertTriangle, FiLock, FiMail, FiUser, FiUserPlus, FiUsers } from 'react-icons/fi';
 
 const Login = () => {
   const { login } = useAuth();
@@ -10,13 +10,14 @@ const Login = () => {
   
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    role: 'patient' // Default role
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   
-  const { email, password } = formData;
+  const { email, password, role } = formData;
   
   // Get the redirect path from location state or default to home
   const from = location.state?.from?.pathname || '/';
@@ -37,7 +38,7 @@ const Login = () => {
       setLoading(true);
       setError('');
       
-      await login(email, password, rememberMe);
+      await login(email, password, rememberMe, role);
       
       // Redirect to the page they were trying to access
       navigate(from, { replace: true });
@@ -56,6 +57,9 @@ const Login = () => {
             Sign in to your account
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Please select your role and enter your credentials
+          </p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Or{' '}
             <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">
               create a new account
@@ -73,7 +77,67 @@ const Login = () => {
         )}
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="rounded-md shadow-sm space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <input
+                  id="role-patient"
+                  name="role"
+                  type="radio"
+                  value="patient"
+                  checked={role === 'patient'}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor="role-patient"
+                  onClick={() => setFormData({...formData, role: 'patient'})}
+                  className={`flex flex-col items-center justify-center p-3 border rounded-md cursor-pointer transition-colors ${role === 'patient' ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                >
+                  <FiUser className="h-6 w-6 mb-1" />
+                  <span className="text-sm font-medium">Patient</span>
+                </label>
+              </div>
+              <div>
+                <input
+                  id="role-provider"
+                  name="role"
+                  type="radio"
+                  value="provider"
+                  checked={role === 'provider'}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor="role-provider"
+                  onClick={() => setFormData({...formData, role: 'provider'})}
+                  className={`flex flex-col items-center justify-center p-3 border rounded-md cursor-pointer transition-colors ${role === 'provider' ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                >
+                  <FiUserPlus className="h-6 w-6 mb-1" />
+                  <span className="text-sm font-medium">Provider</span>
+                </label>
+              </div>
+              <div>
+                <input
+                  id="role-admin"
+                  name="role"
+                  type="radio"
+                  value="admin"
+                  checked={role === 'admin'}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor="role-admin"
+                  onClick={() => setFormData({...formData, role: 'admin'})}
+                  className={`flex flex-col items-center justify-center p-3 border rounded-md cursor-pointer transition-colors ${role === 'admin' ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                >
+                  <FiUsers className="h-6 w-6 mb-1" />
+                  <span className="text-sm font-medium">Admin</span>
+                </label>
+              </div>
+            </div>
+            
             <div>
               <label htmlFor="email" className="sr-only">Email address</label>
               <div className="relative">
@@ -88,7 +152,7 @@ const Login = () => {
                   required
                   value={email}
                   onChange={handleChange}
-                  className="appearance-none rounded-none relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                  className="appearance-none rounded-t-md relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                   placeholder="Email address"
                 />
               </div>
@@ -168,4 +232,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;

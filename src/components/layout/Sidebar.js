@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   FiHome,
@@ -17,17 +17,19 @@ import {
   FiX,
   FiUsers,
   FiBarChart2,
-  FiLogOut
+  FiLogOut,
+  FiLock
 } from 'react-icons/fi';
 
 const Sidebar = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
-  const [activeSubmenu, setActiveSubmenu] = useState(null);
+  const [notifications, setNotifications] = useState({
+    hipaa: 2 // Example: 2 pending HIPAA compliance tasks
+  });
   const hasAccess = (roles) => {
     if (!currentUser || !roles) return false;
     
@@ -51,7 +53,6 @@ const Sidebar = () => {
       ...prev,
       [menu]: !prev[menu]
     }));
-    setActiveSubmenu(expandedMenus[menu] ? null : menu);
   };
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -68,7 +69,6 @@ const Sidebar = () => {
       toggleMenu(menu);
     } else if (e.key === 'Escape') {
       setExpandedMenus(prev => ({ ...prev, [menu]: false }));
-      setActiveSubmenu(null);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const menuItems = document.querySelectorAll('[role="menuitem"]');
@@ -84,7 +84,6 @@ const Sidebar = () => {
       e.preventDefault();
       closeMobileMenu();
     } else if (e.key === 'Escape') {
-      setActiveSubmenu(null);
       e.currentTarget.closest('[role="menuitem"]').focus();
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
@@ -152,6 +151,19 @@ const Sidebar = () => {
         { name: 'Invoices', path: '/billing/invoices' },
         { name: 'Payments', path: '/billing/payments' },
         { name: 'Insurance', path: '/billing/insurance' }
+      ]
+    },
+    {
+      name: 'HIPAA Compliance',
+      icon: <FiLock className="w-5 h-5" />,
+      path: '/hipaa',
+      hasSubmenu: true,
+      submenuKey: 'hipaa',
+      roles: ['admin', 'doctor', 'nurse', 'staff'],
+      submenu: [
+        { name: 'HIPAA Documents', path: '/hipaa/documents' },
+        { name: 'BAA Management', path: '/hipaa/baa-management' },
+        { name: 'Compliance Training', path: '/hipaa/training' }
       ]
     },
     {
@@ -253,7 +265,16 @@ const Sidebar = () => {
                     >
                       <div className="flex items-center">
                         {item.icon}
-                        {!isCollapsed && <span className="ml-3">{item.name}</span>}
+                        {!isCollapsed && (
+                          <div className="flex items-center">
+                            <span className="ml-3">{item.name}</span>
+                            {item.submenuKey === 'hipaa' && notifications.hipaa > 0 && (
+                              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                                {notifications.hipaa}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {!isCollapsed && (
                         <span aria-hidden="true">

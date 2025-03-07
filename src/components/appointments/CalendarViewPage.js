@@ -74,8 +74,6 @@ const CalendarViewPage = () => {
       status: 'confirmed'
     }
   ];
-
-  // Calendar data - Generate dates for the monthly view
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
@@ -133,7 +131,6 @@ const CalendarViewPage = () => {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
-
   return (
     <PageLayout
       title="Appointments Calendar"
