@@ -27,9 +27,11 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
-  const [notifications, setNotifications] = useState({
-    hipaa: 2 // Example: 2 pending HIPAA compliance tasks
-  });
+  // Change this line from:
+  const [notifications] = useState([]);
+  // to:
+  const notifications = { hipaa: 0 }; // Or whatever default value you need
+  
   const hasAccess = (roles) => {
     if (!currentUser || !roles) return false;
     
