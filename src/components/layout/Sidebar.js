@@ -27,12 +27,14 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
-  // Change this line from:
-  const [notifications] = useState([]);
-  // to:
-  const notifications = { hipaa: 0 }; // Or whatever default value you need
+  // Remove the useState line and just use a constant
+  const notifications = { hipaa: 0 }; // Default value for notifications
   
   const hasAccess = (roles) => {
+    // For debugging - log the current user and roles
+    console.log('Current user:', currentUser);
+    console.log('Required roles:', roles);
+    
     if (!currentUser || !roles) return false;
     
     // Super admin has access to everything
@@ -43,11 +45,13 @@ const Sidebar = () => {
       // Additional HIPAA compliance check for sensitive routes
       const requiresHipaaConsent = ['doctor', 'nurse'].includes(currentUser.role);
       if (requiresHipaaConsent && (!currentUser.hipaaConsent || currentUser.hipaaConsent.status !== 'accepted')) {
+        console.log('HIPAA consent required but not provided');
         return false;
       }
       return true;
     }
     
+    console.log('User role not in required roles');
     return false;
   };
   const toggleMenu = (menu) => {

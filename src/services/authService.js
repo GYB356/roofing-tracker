@@ -38,9 +38,9 @@ const authService = {
   },
 
   // Login user
-  login: async (email, password, rememberMe = false) => {
+  login: async (email, password, rememberMe = false, role = 'patient') => {
     try {
-      const response = await api.post('/auth/login', { email, password, rememberMe });
+      const response = await api.post('/auth/login', { email, password, rememberMe, role });
       const { token, refreshToken, user } = response.data;
       
       // Store tokens and user ID

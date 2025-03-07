@@ -90,13 +90,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password, rememberMe = false) => {
+  const login = async (email, password, rememberMe = false, role = 'patient') => {
     try {
       setLoading(true);
       setError(null);
       
       // Call the login API endpoint
-      const result = await authService.login(email, password, rememberMe);
+      const result = await authService.login(email, password, rememberMe, role);
       
       // Set current user and authentication state
       setCurrentUser(result.user);
