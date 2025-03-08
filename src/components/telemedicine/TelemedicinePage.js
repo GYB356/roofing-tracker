@@ -1,75 +1,189 @@
-import React from 'react';
-import { FiVideo, FiPlus } from 'react-icons/fi';
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useSocket } from '../contexts/SocketContext';
+import { useAuth } from '../contexts/AuthContext';
+import useMediaDevices from '../hooks/useMediaDevices';
+import { encryptData } from '../utils/security';
 
-// Inline PageLayout component to avoid import issues
-const PageLayout = ({ 
-  title, 
-  description, 
-  bgColor = "bg-blue-600", 
-  textColor = "text-blue-100", 
-  children,
-  actions
-}) => {
-  return (
-    <div className="container mx-auto px-4 py-6 max-w-screen-xl">
-      {/* Header section */}
-      <div className={`${bgColor} rounded-t-lg shadow-lg overflow-hidden`}>
-        <div className="px-6 py-8 text-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl font-bold">{title}</h1>
-              <p className={`mt-2 ${textColor}`}>{description}</p>
-            </div>
-            {actions && (
-              <div className="ml-4">
-                {actions}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* Content section */}
-      <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-lg p-6">
-        {children}
-      </div>
-    </div>
-  );
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+  ]
 };
 
 const TelemedicinePage = () => {
-  const actionButtons = (
-    <button className="bg-white text-red-600 hover:bg-red-50 font-medium px-4 py-2 rounded-lg flex items-center shadow-sm">
-      <FiPlus className="mr-2" />
-      New Consultation
-    </button>
-  );
+  const { user } = useAuth();
+  const { socket } = useSocket();
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  const [peerConnection, setPeerConnection] = useState(null);
+  const [consultationNotes, setConsultationNotes] = useState('');
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const mediaConstraints = {
+    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: true
+  };
+
+  useEffect(() => {
+    const initializeMedia = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+        setLocalStream(stream);
+        localVideoRef.current.srcObject = stream;
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to access media devices. Please check permissions.');
+        setLoading(false);
+      }
+    };
+
+    initializeMedia();
+
+    return () => {
+      localStream?.getTracks().forEach(track => track.stop());
+    };
+  }, []);
+
+  const createPeerConnection = async () => {
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate) {
+        socket.emit('ice-candidate', encryptData({
+          candidate,
+          sessionId: user.currentSession,
+          userId: user.id
+        }));
+      }
+    };
+
+    pc.ontrack = (event) => {
+      setRemoteStream(event.streams[0]);
+      remoteVideoRef.current.srcObject = event.streams[0];
+    };
+
+    localStream.getTracks().forEach(track =>
+      pc.addTrack(track, localStream)
+    );
+
+    setPeerConnection(pc);
+  };
+
+  const handleConsultationNoteChange = (e) => {
+    setConsultationNotes(encryptData(e.target.value));
+  };
+
+  const handleEndCall = () => {
+    peerConnection?.close();
+    setIsCallActive(false);
+    socket.emit('end-call', { sessionId: user.currentSession });
+  };
+
+  useEffect(() => {
+    const handleSocketEvents = () => {
+      socket.on('offer', async ({ offer, sessionId }) => {
+        try {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket.emit('answer', encryptData({
+            answer,
+            sessionId,
+            userId: user.id
+          }));
+        } catch (err) {
+          setError('Failed to handle call offer');
+        }
+      });
+    
+      socket.on('answer', ({ answer }) => {
+        peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      });
+    
+      socket.on('ice-candidate', ({ candidate }) => {
+        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      });
+    
+      socket.on('call-ended', () => {
+        handleEndCall();
+        setError('Call ended by remote participant');
+      });
+    };
+  
+    if (socket) handleSocketEvents();
+  
+    return () => {
+      if (socket) {
+        socket.off('offer');
+        socket.off('answer');
+        socket.off('ice-candidate');
+        socket.off('call-ended');
+      }
+    };
+  }, [socket, peerConnection, user.id]);
+
+  const startCall = async (participantId) => {
+    try {
+      await createPeerConnection();
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      
+      socket.emit('start-call', encryptData({
+        offer,
+        participantId,
+        userId: user.id,
+        sessionType: 'telemedicine'
+      }));
+      setIsCallActive(true);
+    } catch (err) {
+      setError('Failed to initiate call');
+    }
+  };
+
+  if (loading) return <div className="loading-indicator">Initializing media devices...</div>;
+  if (error) return <div className="error-message">{error}</div>;
 
   return (
-    <PageLayout
-      title="Telemedicine"
-      description="Start or join a virtual consultation."
-      bgColor="bg-red-600"
-      textColor="text-red-100"
-      actions={actionButtons}
-    >
-      <div className="text-center py-8">
-        <FiVideo className="mx-auto h-16 w-16 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">No Scheduled Consultations</h2>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">
-          You don't have any upcoming telemedicine appointments.
-        </p>
-        <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium">
-          Schedule a Consultation
+    <div className="telemedicine-container bg-gray-900 text-white p-6 rounded-lg">
+      <div className="video-grid grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          className="local-video bg-gray-800 rounded-lg"
+        />
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          className="remote-video bg-gray-800 rounded-lg"
+        />
+      </div>
+
+      <div className="consultation-notes mb-6">
+        <textarea
+          value={consultationNotes}
+          onChange={handleConsultationNoteChange}
+          className="w-full bg-gray-800 rounded-lg p-4"
+          placeholder="Enter consultation notes..."
+          disabled={!isCallActive}
+        />
+      </div>
+
+      <div className="controls flex justify-center gap-4">
+        <button
+          onClick={handleEndCall}
+          className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg"
+          disabled={!isCallActive}
+        >
+          End Call
         </button>
       </div>
-      
-      <div className="mt-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-center">
-        <p className="text-gray-600 dark:text-gray-300">
-          This page is under development. Check back soon for telemedicine features.
-        </p>
-      </div>
-    </PageLayout>
+    </div>
   );
 };
 

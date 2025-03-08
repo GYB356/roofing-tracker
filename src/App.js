@@ -8,6 +8,10 @@ import Register from './components/auth/Register';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ProviderDashboard from './components/dashboard/ProviderDashboard';
 import VerifyEmailSent from './components/auth/VerifyEmailSent';
+import { AppointmentsProvider } from './contexts/AppointmentsContext';
+import { MedicalRecordsProvider } from './contexts/MedicalRecordsContext';
+import AppointmentsList from './components/AppointmentsList';
+import MedicalRecords from './components/MedicalRecords';
 
 // Main page components
 import AppointmentsPage from './components/appointments/AppointmentsPage';
@@ -94,7 +98,9 @@ function App() {
                     {/* Medical Records routes - restricted to admin, doctor, nurse */}
                     <Route path="/medical-records" element={
                       <ProtectedRoute allowedRoles={['admin', 'provider']}>
-                        <MedicalRecordsPage />
+                        <MedicalRecordsProvider>
+                          <MedicalRecordsPage />
+                        </MedicalRecordsProvider>
                       </ProtectedRoute>
                     } />
                     <Route path="/medical-records/health-summary" element={
@@ -122,7 +128,11 @@ function App() {
                     <Route path="/messages" element={<MessagesPage />} />
                     
                     {/* Telemedicine route */}
-                    <Route path="/telemedicine" element={<TelemedicinePage />} />
+<Route path="/telemedicine" element={
+  <ProtectedRoute allowedRoles={['provider', 'patient']}>
+    <TelemedicinePage />
+  </ProtectedRoute>
+} />
                     
                     {/* Billing routes */}
                     <Route path="/billing" element={<BillingPage />} />
@@ -142,24 +152,7 @@ function App() {
         </Routes>
       </AuthProvider>
     </Router>
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <ProviderDashboard />
-            </ProtectedRoute>
-          } />
-          
-          {/* Add other routes here */}
-          
-          {/* Default route */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+
   );
 }
 

@@ -18,9 +18,10 @@ const ProtectedRoute = ({ children, allowedRoles = [], requireAuth = true }) => 
   // Show loading state if auth is still being checked
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-      </div>
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
+      <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+      <p className="text-lg">Verifying access permissions...</p>
+    </div>
     );
   }
 
@@ -30,13 +31,9 @@ const ProtectedRoute = ({ children, allowedRoles = [], requireAuth = true }) => 
   }
 
   // If specific roles are required, check if user has one of those roles
-  if (allowedRoles.length > 0 && currentUser) {
-    const hasRequiredRole = allowedRoles.includes(currentUser.role);
-    
-    if (!hasRequiredRole) {
-      // Redirect to dashboard if user doesn't have the required role
-      return <Navigate to="/" replace />;
-    }
+  if (allowedRoles.length > 0 && !allowedRoles.some(role => currentUser?.roles?.includes(role))) {
+    console.error('Unauthorized role attempt:', currentUser?.roles);
+    return <Navigate to="/" replace />;
   }
 
   // If user has passed all checks, render the protected component
