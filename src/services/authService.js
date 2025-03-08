@@ -1,5 +1,7 @@
 import api from './api';
 import jwt_decode from 'jwt-decode';
+// Remove the unused axios import
+import axios from 'axios';
 
 // Helper function to check if token is expired
 const isTokenExpired = (token) => {
@@ -23,6 +25,7 @@ const removeTokens = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('currentUserId');
+  localStorage.removeItem('user');
 };
 
 // Authentication service
@@ -45,6 +48,7 @@ const authService = {
       
       // Store tokens and user ID
       storeTokens(token, refreshToken, user.id);
+      localStorage.setItem('user', JSON.stringify(user));
       
       return { success: true, user };
     } catch (error) {
@@ -58,7 +62,7 @@ const authService = {
       // Call logout endpoint to invalidate token on server
       await api.post('/auth/logout');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout API error:', error);
     } finally {
       // Always remove tokens from local storage
       removeTokens();
@@ -70,17 +74,44 @@ const authService = {
     const token = localStorage.getItem('token');
     return !!token && !isTokenExpired(token);
   },
-
+  
   // Get current user
-  getCurrentUser: async () => {
+  getCurrentUser: () => {
     try {
-      const response = await api.get('/auth/me');
-      return response.data;
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to get user data');
+      console.error('Error parsing user data:', error);
+      // If there's an error parsing, clear the corrupted data
+      localStorage.removeItem('user');
+      return null;
     }
   },
-
+  
+  // Get user profile from API
+  getUserProfile: async () => {
+    try {
+      const response = await api.get('/auth/me');
+      const userData = response.data;
+      localStorage.setItem('user', JSON.stringify(userData));
+      return userData;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  },
+  
+  // Verify token
+  verifyToken: async () => {
+    try {
+      const response = await api.get('/auth/verify');
+      return response.data.isValid;
+    } catch (error) {
+      console.error('Token verification error:', error);
+      return false;
+    }
+  },
+  
   // Accept HIPAA consent
   acceptHipaaConsent: async () => {
     try {
@@ -90,7 +121,7 @@ const authService = {
       throw new Error(error.response?.data?.message || 'Failed to record HIPAA consent');
     }
   },
-
+  
   // Verify email
   verifyEmail: async (token) => {
     try {
@@ -100,7 +131,7 @@ const authService = {
       throw new Error(error.response?.data?.message || 'Email verification failed');
     }
   },
-
+  
   // Request password reset
   requestPasswordReset: async (email) => {
     try {
@@ -110,7 +141,7 @@ const authService = {
       throw new Error(error.response?.data?.message || 'Failed to request password reset');
     }
   },
-
+  
   // Reset password
   resetPassword: async (token, newPassword) => {
     try {
@@ -119,7 +150,36 @@ const authService = {
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Password reset failed');
     }
+  },
+  
+  // Refresh token
+  refreshToken: async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        return false;
+      }
+      
+      // Use axios directly to avoid circular dependency with api.js
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL || '/api'}/auth/refresh-token`,
+        { refreshToken }
+      );
+      
+      const { token: newToken } = response.data;
+      
+      // Store the new token
+      localStorage.setItem('token', newToken);
+      
+      return true;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // Clear tokens on refresh failure
+      removeTokens();
+      return false;
+    }
   }
 };
 
 export default authService;
+// Remove any code after this line that might include another default export

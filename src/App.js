@@ -6,6 +6,7 @@ import Sidebar from './components/layout/Sidebar';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import ProviderDashboard from './components/dashboard/ProviderDashboard';
 import VerifyEmailSent from './components/auth/VerifyEmailSent';
 
 // Main page components
@@ -141,6 +142,24 @@ function App() {
         </Routes>
       </AuthProvider>
     </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <ProviderDashboard />
+            </ProtectedRoute>
+          } />
+          
+          {/* Add other routes here */}
+          
+          {/* Default route */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

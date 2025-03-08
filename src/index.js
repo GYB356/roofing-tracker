@@ -1,18 +1,21 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import "react-datepicker/dist/react-datepicker.css";
-import "react-toastify/dist/ReactToastify.css";
-import './styles/improvements.css'; // Add your new CSS import here
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+// Export all services from a single entry point for easier importing
+import authService from './services/AuthService';
+import providerService from './services/ProviderService';
+import setupAxios from './services/api.config';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+// Initialize global API configuration
+setupAxios();
 
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+export {
+  authService,
+  providerService,
+  setupAxios
+};
 
-reportWebVitals();
+// Fix anonymous default export
+const serviceExports = {
+  auth: authService,
+  provider: providerService
+};
+
+export default serviceExports;

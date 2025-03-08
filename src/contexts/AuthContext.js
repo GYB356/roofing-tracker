@@ -1,9 +1,9 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import authService from '../services/authService';
-import auditLogService from '../services/auditLogService';
+import { useNavigate } from 'react-router-dom';
+import authService from '../services/AuthService';
+import api from '../services/api';
 
-// Create the auth context
+// Create auth context
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -13,141 +13,95 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // Check if the user is authenticated on component mount
+  // Check authentication status on mount
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        setLoading(true);
-        
-        // Check if token exists and is valid
-        if (!authService.isAuthenticated()) {
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-          setLoading(false);
-          return;
-        }
-        
-        // Get current user data from API
-        const userData = await authService.getCurrentUser();
-        
-        if (!userData) {
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-          setLoading(false);
-          return;
-        }
-        
-        setCurrentUser(userData);
-        setIsAuthenticated(true);
-      } catch (err) {
-        console.error('Authentication check failed:', err);
-        setIsAuthenticated(false);
-        setCurrentUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('currentUserId');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     checkAuthStatus();
   }, []);
 
+  // Function to check authentication status
+  const checkAuthStatus = async () => {
+    try {
+      setLoading(true);
+      
+      if (!authService.isAuthenticated()) {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        setLoading(false);
+        return;
+      }
+      
+      const userData = await authService.getCurrentUser();
+      
+      if (userData) {
+        setCurrentUser(userData);
+        setIsAuthenticated(true);
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Register function
   const register = async (userData) => {
     try {
       setLoading(true);
       setError(null);
       
-      // Validate role
-      const validRoles = ['patient', 'provider', 'admin'];
-      if (!validRoles.includes(userData.role)) {
-        userData.role = 'patient'; // Default to patient if invalid role
-      }
-      
-      // Call the register API endpoint
       const result = await authService.register(userData);
       
-      // Log successful registration
-      await auditLogService.logAuthentication('register', result.userId || 'new-user', true, {
-        email: userData.email,
-        role: userData.role
-      });
+      if (result.success) {
+        setCurrentUser(result.user);
+        setIsAuthenticated(true);
+      }
       
-      return { success: true, message: result.message || 'Registration successful. Please check your email to verify your account.' };
-    } catch (err) {
-      // Log failed registration
-      await auditLogService.logAuthentication('register', 'unknown', false, {
-        email: userData.email,
-        error: err.message
-      });
-      
-      setError(err.message || 'Registration failed. Please try again.');
-      return { success: false, message: err.message || 'Registration failed. Please try again.' };
+      return result;
+    } catch (error) {
+      setError(error.message || 'Registration failed');
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (email, password, rememberMe = false, role = 'patient') => {
+  // Login function
+  const login = async (email, password) => {
     try {
       setLoading(true);
       setError(null);
       
-      // Call the login API endpoint
-      const result = await authService.login(email, password, rememberMe, role);
+      const result = await authService.login(email, password);
       
-      // Set current user and authentication state
-      setCurrentUser(result.user);
-      setIsAuthenticated(true);
+      if (result.success) {
+        setCurrentUser(result.user);
+        setIsAuthenticated(true);
+      }
       
-      // Log successful authentication
-      await auditLogService.logAuthentication('login', result.user.id, true, {
-        email: email,
-        rememberMe: rememberMe
-      });
-      
-      // Redirect to the page the user was trying to access, or to the dashboard
-      const origin = location.state?.from?.pathname || '/';
-      navigate(origin);
-      
-      return { success: true };
-    } catch (err) {
-      // Log failed authentication attempt
-      await auditLogService.logAuthentication('login', 'unknown', false, {
-        email: email,
-        error: err.message
-      });
-      
-      setError(err.message || 'Login failed. Please check your credentials and try again.');
-      return { 
-        success: false, 
-        message: err.message || 'Login failed. Please check your credentials and try again.'
-      };
+      return result;
+    } catch (error) {
+      setError(error.message || 'Login failed');
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
+  // Logout function
   const logout = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Log logout event before clearing user data
-      const userId = localStorage.getItem('currentUserId');
-      if (userId) {
-        await auditLogService.logAuthentication('logout', userId, true);
-      }
-      
-      // Call the logout API endpoint
       await authService.logout();
       
-      // Clear user state
       setCurrentUser(null);
       setIsAuthenticated(false);
       
-      // Redirect to login page
       navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
@@ -156,64 +110,19 @@ export const AuthProvider = ({ children }) => {
     }
   }, [navigate]);
 
-  const acceptHipaaConsent = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Call the HIPAA consent API endpoint
-      const result = await authService.acceptHipaaConsent();
-      
-      // Update current user with new HIPAA consent status
-      if (result.success) {
-        setCurrentUser({ 
-          ...currentUser, 
-          hipaaConsent: { 
-            status: 'accepted', 
-            date: new Date().toISOString() 
-          } 
-        });
-        
-        // Log HIPAA consent acceptance
-        await auditLogService.createLog(
-          auditLogService.LOG_TYPES.SYSTEM,
-          'hipaa_consent_accepted',
-          {
-            userId: currentUser.id,
-            timestamp: new Date().toISOString()
-          }
-        );
-      }
-      
-      // Redirect to the page the user was trying to access, or to the dashboard
-      const origin = location.state?.from?.pathname || '/';
-      navigate(origin);
-      
-      return { success: true, message: 'HIPAA consent accepted.' };
-    } catch (err) {
-      setError(err.message || 'Failed to record HIPAA consent. Please try again.');
-      return { 
-        success: false, 
-        message: err.message || 'Failed to record HIPAA consent. Please try again.' 
-      };
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Clear error function
+  const clearError = () => setError(null);
 
-  // Other auth functions (forgotPassword, resetPassword, verifyEmail) implemented similarly
-
-  // Context value object with all the authentication state and functions
+  // Auth context value
   const value = {
     currentUser,
     loading,
     error,
     isAuthenticated,
     login,
-    logout,
     register,
-    acceptHipaaConsent,
-    clearError: () => setError(null)
+    logout,
+    clearError
   };
 
   return (
@@ -223,13 +132,95 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use the auth context
+// Custom hook to use auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === null) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 
 export default AuthContext;
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import authService from '../services/AuthService';
+
+const AuthContext = createContext();
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
+export function AuthProvider({ children }) {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        setLoading(true);
+        if (authService.isAuthenticated()) {
+          const isValid = await authService.verifyToken();
+          if (isValid) {
+            const userData = authService.getCurrentUser();
+            setCurrentUser(userData);
+            setIsAuthenticated(true);
+          } else {
+            // Token invalid, clear it
+            authService.logout();
+            setIsAuthenticated(false);
+          }
+        }
+      } catch (err) {
+        console.error('Auth check error:', err);
+        setError('Authentication check failed');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
+
+  const login = async (email, password) => {
+    try {
+      setError(null);
+      const response = await authService.login(email, password);
+      const userData = authService.getCurrentUser();
+      setCurrentUser(userData);
+      setIsAuthenticated(true);
+      return response;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
+      throw err;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } finally {
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    }
+  };
+
+  const value = {
+    currentUser,
+    isAuthenticated,
+    loading,
+    error,
+    login,
+    logout,
+    setError
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
