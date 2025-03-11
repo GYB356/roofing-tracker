@@ -1,10 +1,10 @@
+// components/auth/Register.js
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { FiUserPlus, FiAlertTriangle, FiUser, FiMail, FiLock, FiPhone } from 'react-icons/fi';
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle, UserPlus } from 'lucide-react';
+import AuthService from '../../services/AuthService';
 
 const Register = () => {
-  const { register } = useAuth();
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
@@ -14,41 +14,102 @@ const Register = () => {
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'patient' // Default role
+    role: 'patient', // Default role
+    agreeTerms: false
   });
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  
-  const { firstName, lastName, email, phone, password, confirmPassword, role } = formData;
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    agreeTerms: ''
+  });
   
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value
+    });
+
+    // Clear form errors when typing
+    if (formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: ''
+      });
+    }
+    
+    // Clear general error when user changes input
+    if (error) {
+      setError('');
+    }
   };
   
   const validateForm = () => {
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      setError('Please fill in all required fields');
-      return false;
+    let isValid = true;
+    const errors = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      agreeTerms: ''
+    };
+    
+    // First name validation
+    if (!formData.firstName.trim()) {
+      errors.firstName = 'First name is required';
+      isValid = false;
     }
     
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return false;
+    // Last name validation
+    if (!formData.lastName.trim()) {
+      errors.lastName = 'Last name is required';
+      isValid = false;
     }
     
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return false;
+    // Email validation
+    if (!formData.email) {
+      errors.email = 'Email is required';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Email address is invalid';
+      isValid = false;
     }
     
-    if (!agreeTerms) {
-      setError('You must agree to the Terms of Service and Privacy Policy');
-      return false;
+    // Password validation
+    if (!formData.password) {
+      errors.password = 'Password is required';
+      isValid = false;
+    } else if (formData.password.length < 8) {
+      errors.password = 'Password must be at least 8 characters';
+      isValid = false;
     }
     
-    return true;
+    // Confirm password validation
+    if (!formData.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+      isValid = false;
+    } else if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+      isValid = false;
+    }
+    
+    // Terms agreement validation
+    if (!formData.agreeTerms) {
+      errors.agreeTerms = 'You must agree to the terms and privacy policy';
+      isValid = false;
+    }
+    
+    setFormErrors(errors);
+    return isValid;
   };
   
   const handleSubmit = async (e) => {
@@ -64,240 +125,339 @@ const Register = () => {
       
       // Create user object without confirmPassword
       const userData = {
-        firstName,
-        lastName,
-        email,
-        phone,
-        password,
-        role
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone || '',
+        password: formData.password,
+        role: formData.role
       };
       
-      await register(userData);
+      const response = await AuthService.register(userData);
       
-      // Redirect to verification page
-      navigate('/verify-email-sent', { state: { email } });
+      console.log('Registration successful:', response);
+      
+      // Redirect based on user role
+      const { role } = response.user;
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'provider') {
+        navigate('/provider');
+      } else {
+        navigate('/patient');
+      }
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err.message || 'Registration failed. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
+
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  // Toggle confirm password visibility
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg transition-all duration-300">
         <div className="text-center">
-          <FiUserPlus className="mx-auto h-12 w-12 text-primary-600 dark:text-primary-400" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
+          <div className="mx-auto h-14 flex items-center justify-center">
+            <h1 className="text-2xl font-bold text-indigo-600">Your Company</h1>
+          </div>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-sm text-gray-600">
             Already have an account?{' '}
-            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">
+            <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
               Sign in
             </Link>
           </p>
         </div>
         
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900 border-l-4 border-red-500 p-4">
-            <div className="flex items-center">
-              <FiAlertTriangle className="text-red-500 mr-3" />
-              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-            </div>
-          </div>
-        )}
-        
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div className="grid grid-cols-1 gap-y-2 gap-x-3 sm:grid-cols-2">
+          {/* Error alert */}
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-4">
+            {/* Name fields - side by side */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* First name field */}
               <div>
-                <label htmlFor="firstName" className="sr-only">First Name</label>
-                <div className="relative">
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                  First name
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiUser className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     id="firstName"
                     name="firstName"
                     type="text"
                     autoComplete="given-name"
-                    required
-                    value={firstName}
+                    value={formData.firstName}
                     onChange={handleChange}
-                    className="appearance-none rounded-md relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                    placeholder="First Name"
+                    className={`block w-full pl-10 pr-3 py-3 border ${
+                      formErrors.firstName ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    placeholder="First name"
                   />
                 </div>
+                {formErrors.firstName && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.firstName}</p>
+                )}
               </div>
               
+              {/* Last name field */}
               <div>
-                <label htmlFor="lastName" className="sr-only">Last Name</label>
-                <div className="relative">
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                  Last name
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FiUser className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
                     id="lastName"
                     name="lastName"
                     type="text"
                     autoComplete="family-name"
-                    required
-                    value={lastName}
+                    value={formData.lastName}
                     onChange={handleChange}
-                    className="appearance-none rounded-md relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                    placeholder="Last Name"
+                    className={`block w-full pl-10 pr-3 py-3 border ${
+                      formErrors.lastName ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    placeholder="Last name"
                   />
                 </div>
+                {formErrors.lastName && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.lastName}</p>
+                )}
               </div>
             </div>
             
-            <div className="mt-2">
-              <label htmlFor="email" className="sr-only">Email address</label>
-              <div className="relative">
+            {/* Email field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiMail className="h-5 w-5 text-gray-400" />
+                  <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="email"
                   name="email"
                   type="email"
                   autoComplete="email"
-                  required
-                  value={email}
+                  value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none rounded-md relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                  placeholder="Email address"
+                  className={`block w-full pl-10 pr-3 py-3 border ${
+                    formErrors.email ? 'border-red-300' : 'border-gray-300'
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                  placeholder="you@example.com"
                 />
               </div>
+              {formErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+              )}
             </div>
             
-            <div className="mt-2">
-              <label htmlFor="phone" className="sr-only">Phone Number</label>
-              <div className="relative">
+            {/* Phone field (optional) */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone number (optional)
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiPhone className="h-5 w-5 text-gray-400" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                  </svg>
                 </div>
                 <input
                   id="phone"
                   name="phone"
                   type="tel"
                   autoComplete="tel"
-                  value={phone}
+                  value={formData.phone}
                   onChange={handleChange}
-                  className="appearance-none rounded-md relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                  placeholder="Phone Number (optional)"
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="(123) 456-7890"
                 />
               </div>
             </div>
             
-            <div className="mt-2">
-              <label htmlFor="password" className="sr-only">Password</label>
-              <div className="relative">
+            {/* Password field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiLock className="h-5 w-5 text-gray-400" />
+                  <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
-                  required
-                  value={password}
+                  value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none rounded-md relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                  placeholder="Password"
+                  className={`block w-full pl-10 pr-10 py-3 border ${
+                    formErrors.password ? 'border-red-300' : 'border-gray-300'
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                  placeholder="••••••••"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  <button
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
               </div>
+              {formErrors.password && (
+                <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Must be at least 8 characters long
+              </p>
             </div>
             
-            <div className="mt-2">
-              <label htmlFor="confirmPassword" className="sr-only">Confirm Password</label>
-              <div className="relative">
+            {/* Confirm Password field */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiLock className="h-5 w-5 text-gray-400" />
+                  <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
-                  required
-                  value={confirmPassword}
+                  value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="appearance-none rounded-md relative block w-full pl-10 px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                  placeholder="Confirm Password"
+                  className={`block w-full pl-10 pr-10 py-3 border ${
+                    formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                  } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                  placeholder="••••••••"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  <button
+                    type="button"
+                    onClick={toggleConfirmPasswordVisibility}
+                    className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
               </div>
+              {formErrors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+              )}
             </div>
             
-            <div className="mt-2">
-              <label htmlFor="role" className="sr-only">Account Type</label>
+            {/* Role selection */}
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Account type
+              </label>
               <select
                 id="role"
                 name="role"
-                value={role}
+                value={formData.role}
                 onChange={handleChange}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                className="mt-1 block w-full pl-3 pr-10 py-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               >
                 <option value="patient">Patient</option>
                 <option value="provider">Healthcare Provider</option>
                 <option value="admin">Administrator</option>
               </select>
             </div>
+            
+            {/* Terms agreement */}
+            <div className="flex items-start">
+              <div className="flex items-center h-5">
+                <input
+                  id="agreeTerms"
+                  name="agreeTerms"
+                  type="checkbox"
+                  checked={formData.agreeTerms}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="agreeTerms" className="font-medium text-gray-700">
+                  I agree to the{' '}
+                  <Link to="/terms" className="text-indigo-600 hover:text-indigo-500">
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link to="/privacy" className="text-indigo-600 hover:text-indigo-500">
+                    Privacy Policy
+                  </Link>
+                </label>
+              </div>
+            </div>
+            {formErrors.agreeTerms && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.agreeTerms}</p>
+            )}
           </div>
           
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={() => setAgreeTerms(!agreeTerms)}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded"
-              />
-            </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="terms" className="font-medium text-gray-700 dark:text-gray-300">
-                I agree to the{' '}
-                <Link to="/terms" className="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link to="/privacy" className="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
-          </div>
-          
+          {/* Submit button */}
           <div>
             <button
               type="submit"
               disabled={loading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-                loading
-                  ? 'bg-primary-400 cursor-not-allowed'
-                  : 'bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
-              }`}
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 ease-in-out disabled:opacity-70"
             >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Creating account...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <FiUserPlus className="mr-2" />
-                  Create Account
-                </span>
-              )}
+              <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+                <UserPlus className="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" />
+              </span>
+              {loading ? 'Creating account...' : 'Create account'}
             </button>
           </div>
         </form>
+        
+        {/* App version footer */}
+        <div className="text-center mt-4">
+          <p className="text-xs text-gray-500">
+            Version 1.0.0 © 2025 Your Company
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            <Link to="/terms" className="hover:text-gray-700">Terms</Link> • 
+            <Link to="/privacy" className="hover:text-gray-700 ml-2">Privacy</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

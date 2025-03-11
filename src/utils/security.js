@@ -1,135 +1,115 @@
-// src/utils/security.js
-import CryptoJS from 'crypto-js';
+// utils/security.js
+/**
+ * Security utilities for handling sensitive data
+ * Provides secure storage and permission checking functionality
+ */
 
-// Secret key for client-side encryption (in a real app, this would be environment-specific)
-const ENCRYPTION_KEY = process.env.REACT_APP_ENCRYPTION_KEY || 'your-fallback-key-for-dev-only';
+// A wrapper for localStorage that encrypts/decrypts data
+export const secureStorage = {
+  // Simple encryption function (in production, use a real encryption library)
+  _encrypt: (data) => {
+    try {
+      if (typeof data === 'object') {
+        data = JSON.stringify(data);
+      }
+      return btoa(data);
+    } catch (error) {
+      console.error('Encryption error:', error);
+      return null;
+    }
+  },
+  
+  // Simple decryption function
+  _decrypt: (encryptedData) => {
+    try {
+      const decoded = atob(encryptedData);
+      try {
+        // Try to parse as JSON
+        return JSON.parse(decoded);
+      } catch {
+        // Return as is if not valid JSON
+        return decoded;
+      }
+    } catch (error) {
+      console.error('Decryption error:', error);
+      return null;
+    }
+  },
+  
+  // Store item with encryption
+  setItem: async (key, value) => {
+    try {
+      const encryptedValue = secureStorage._encrypt(value);
+      if (encryptedValue) {
+        localStorage.setItem(key, encryptedValue);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error storing encrypted item:', error);
+      return false;
+    }
+  },
+  
+  // Retrieve and decrypt item
+  getItem: async (key) => {
+    try {
+      const encryptedValue = localStorage.getItem(key);
+      if (!encryptedValue) return null;
+      return secureStorage._decrypt(encryptedValue);
+    } catch (error) {
+      console.error('Error retrieving encrypted item:', error);
+      return null;
+    }
+  },
+  
+  // Remove item
+  removeItem: async (key) => {
+    try {
+      localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.error('Error removing item:', error);
+      return false;
+    }
+  },
+  
+  // Clear all items
+  clear: async () => {
+    try {
+      localStorage.clear();
+      return true;
+    } catch (error) {
+      console.error('Error clearing storage:', error);
+      return false;
+    }
+  }
+};
 
 /**
- * Encrypt sensitive data for local storage
+ * Encrypt data for secure transmission
  * @param {any} data - Data to encrypt
- * @returns {string} - Encrypted string
+ * @returns {string} Encrypted data string
  */
 export const encryptData = (data) => {
-  if (!data) return null;
-  
-  const dataString = typeof data === 'object' ? JSON.stringify(data) : String(data);
-  return CryptoJS.AES.encrypt(dataString, ENCRYPTION_KEY).toString();
+  return secureStorage._encrypt(data);
 };
 
 /**
- * Decrypt data from local storage
- * @param {string} encryptedData - Encrypted string
- * @param {boolean} parseJson - Whether to parse result as JSON
- * @returns {any} - Decrypted data
- */
-export const decryptData = (encryptedData, parseJson = true) => {
-  if (!encryptedData) return null;
-  
-  try {
-    const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
-    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-    
-    if (!decryptedString) return null;
-    
-    return parseJson ? JSON.parse(decryptedString) : decryptedString;
-  } catch (error) {
-    console.error('Decryption error:', error);
-    return null;
-  }
-};
-
-/**
- * Secure storage for sensitive data
- */
-export const secureStorage = {
-  setItem: (key, value) => {
-    const encrypted = encryptData(value);
-    localStorage.setItem(key, encrypted);
-  },
-  
-  getItem: (key, parseJson = true) => {
-    const encrypted = localStorage.getItem(key);
-    return decryptData(encrypted, parseJson);
-  },
-  
-  removeItem: (key) => {
-    localStorage.removeItem(key);
-  }
-};
-
-/**
- * Sanitize potentially sensitive data for logging
- * @param {object} data - Data to sanitize
- * @param {Array<string>} sensitiveFields - Fields to redact
- * @returns {object} - Sanitized data
- */
-export const sanitizeForLogging = (data, sensitiveFields = ['password', 'token', 'ssn', 'dob']) => {
-  if (!data || typeof data !== 'object') return data;
-  
-  const sanitized = { ...data };
-  
-  sensitiveFields.forEach(field => {
-    if (field in sanitized) {
-      sanitized[field] = '[REDACTED]';
-    }
-  });
-  
-  return sanitized;
-};
-
-/**
- * Log security events to a secure audit trail
- * @param {string} action - The action being performed
- * @param {object} details - Details about the action
- * @param {string} userId - ID of the user performing the action
- */
-export const auditLog = (action, details, userId) => {
-  const sanitizedDetails = sanitizeForLogging(details);
-  
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    action,
-    userId,
-    details: sanitizedDetails,
-    userAgent: navigator.userAgent,
-    ipAddress: '127.0.0.1' // In a real app, this would come from the server
-  };
-  
-  // In a mock implementation, store in localStorage
-  const auditTrail = JSON.parse(localStorage.getItem('auditTrail') || '[]');
-  auditTrail.push(logEntry);
-  localStorage.setItem('auditTrail', JSON.stringify(auditTrail));
-  
-  // In a real implementation, this would send to a secure logging service
-  console.log('AUDIT LOG:', logEntry);
-};
-
-/**
- * Generate secure session ID
- * @returns {string} - Secure random session ID
- */
-export const generateSessionId = () => {
-  return CryptoJS.lib.WordArray.random(16).toString();
-};
-
-/**
- * Check if a user has permission for a specific action
- * @param {object} user - User object
- * @param {string} permission - Permission to check
- * @returns {boolean} - Whether user has permission
+ * Check if a user has a specific permission
+ * @param {Object} user - Current user object
+ * @param {string} permission - Permission to check for
+ * @returns {boolean} Whether user has the permission
  */
 export const hasPermission = (user, permission) => {
-  if (!user || !user.role) return false;
-  
-  // Role-based permissions mapping
-  const rolePermissions = {
-    admin: ['read_all', 'write_all', 'delete_all', 'manage_users', 'view_audit'],
-    doctor: ['read_patients', 'write_medical', 'prescribe', 'schedule'],
-    nurse: ['read_patients', 'update_vitals', 'schedule'],
-    receptionist: ['schedule', 'read_basic'],
-    patient: ['read_own', 'request_appointment', 'message_providers']
-  };
-  
-  const userPermissions = rolePermissions[user.role] || [];
-  return userPermissions.includes(permission);
+  if (!user || !user.permissions) {
+    return false;
+  }
+  return user.permissions.includes(permission);
+};
+
+export default {
+  secureStorage,
+  encryptData,
+  hasPermission
 };

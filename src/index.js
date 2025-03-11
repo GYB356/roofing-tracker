@@ -1,21 +1,46 @@
-// Export all services from a single entry point for easier importing
-import authService from './services/AuthService';
-import providerService from './services/ProviderService';
+// src/index.js - Complete implementation
+import React from 'react';
+import ReactDOM from 'react-dom';
+import './index.css'; // Include your styles
+import App from './App';
+import reportWebVitals from './reportWebVitals'; // If you're using Create React App
+
+// Import services with proper casing
+import AuthService from './services/AuthService';
+import ProviderService from './services/ProviderService';
 import setupAxios from './services/api.config';
 
 // Initialize global API configuration
-setupAxios();
+// Wrap in try/catch to prevent initialization errors from breaking rendering
+try {
+  setupAxios();
+} catch (error) {
+  console.error('Error initializing API configuration:', error);
+}
 
+// Make services available globally for debugging if needed
+window.services = {
+  auth: AuthService,
+  provider: ProviderService
+};
+
+// Create our service exports
 export {
-  authService,
-  providerService,
+  AuthService,
+  ProviderService,
   setupAxios
 };
 
-// Fix anonymous default export
-const serviceExports = {
-  auth: authService,
-  provider: providerService
-};
+// The most important part - render your app!
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById('root')
+);
 
-export default serviceExports;
+// If you're using Create React App's performance measurement
+// If you don't have this function, you can safely remove this line
+if (typeof reportWebVitals === 'function') {
+  reportWebVitals();
+}

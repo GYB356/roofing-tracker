@@ -34,14 +34,6 @@ const CalendarView = lazy(() => import('./components/calendar/CalendarView'));
 const EventForm = lazy(() => import('./components/calendar/EventForm'));
 const ClientDetail = lazy(() => import('./components/clients/ClientDetail'));
 
-// Other existing components
-const MessagesPage = lazy(() => import('./components/messages/MessagesPage'));
-const TelemedicinePage = lazy(() => import('./components/telemedicine/TelemedicinePage'));
-const BillingPage = lazy(() => import('./components/billing/BillingPage'));
-const InvoicesPage = lazy(() => import('./components/billing/InvoicesPage'));
-const PaymentMethodsPage = lazy(() => import('./components/billing/PaymentMethodsPage'));
-const HealthMetricsPage = lazy(() => import('./components/health-metrics/HealthmetricsPage'));
-
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
   constructor(props) {

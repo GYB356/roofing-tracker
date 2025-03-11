@@ -10,8 +10,17 @@ import Task from './Task'; // Import your updated Task component with time track
 import TaskDetailModal from './TaskDetailModal'; // Import the modal component
 import { timerService } from '../services/timerService'; // Import timer service
 
-// Import your initial board data
-// For sample data, use the initialBoardData from your existing code
+const initialBoardData = {
+  tasks: {
+    'task-1': { id: 'task-1', title: 'Task 1', description: 'Description for task 1', tags: ['tag1'], assignee: { id: 'user-1', name: 'User One' } },
+    'task-2': { id: 'task-2', title: 'Task 2', description: 'Description for task 2', tags: ['tag2'], assignee: { id: 'user-2', name: 'User Two' } }
+  },
+  columns: {
+    'column-1': { id: 'column-1', title: 'To Do', taskIds: ['task-1'] },
+    'column-2': { id: 'column-2', title: 'In Progress', taskIds: ['task-2'] }
+  },
+  columnOrder: ['column-1', 'column-2']
+};
 
 const KanbanBoard = () => {
   const [boardData, setBoardData] = useState(initialBoardData);

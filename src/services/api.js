@@ -1,9 +1,10 @@
+// services/api.js
 import axios from 'axios';
-// Fixed import to match the correct filename case
-import authService from './AuthService';
+import { API_URL } from '../config';
 
+// Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -34,13 +35,41 @@ api.interceptors.response.use(
       
       originalRequest._retry = true;
       
-      // Try to refresh token
-      const success = await authService.refreshToken();
-      if (success) {
-        // Update auth header with new token
-        const token = localStorage.getItem('token');
-        originalRequest.headers['Authorization'] = `Bearer ${token}`;
-        return api(originalRequest);
+      try {
+        // Use direct refresh method to avoid circular dependency
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+        
+        const response = await axios.post(
+          `${API_URL}/auth/refresh-token`,
+          { refreshToken },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+        
+        if (response.data?.token) {
+          // Store the new token
+          localStorage.setItem('token', response.data.token);
+          
+          // Update auth header with new token
+          originalRequest.headers['Authorization'] = `Bearer ${response.data.token}`;
+          return api(originalRequest);
+        } else {
+          throw new Error('Invalid refresh token response');
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        
+        // Clear tokens on refresh failure
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('currentUserId');
+        localStorage.removeItem('user');
+        
+        // Redirect to login
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
       }
     }
     
