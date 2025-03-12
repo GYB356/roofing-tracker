@@ -1,307 +1,306 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import axios from 'axios';
+import { format } from 'date-fns';
 import { 
-  Calendar, 
-  FileText, 
-  Activity, 
-  Heart, 
-  Pill, 
-  CreditCard,
-  X,
-  Check,
-  AlertTriangle,
-  Edit,
-  ChevronRight
-} from 'lucide-react';
+  CalendarIcon, 
+  ClipboardListIcon, 
+  ChartBarIcon, 
+  CreditCardIcon, 
+  UserIcon, 
+  ChatIcon,
+  ExclamationCircleIcon
+} from '@heroicons/react/outline';
 
-// Enhanced mock data with more comprehensive information
-const getMockPatientData = () => ({
-  patientInfo: {
-    name: 'Emma Johnson',
-    age: 35,
-    bloodType: 'A+',
-    contactInfo: {
-      email: 'emma.johnson@example.com',
-      phone: '(555) 123-4567'
-    },
-    emergencyContact: {
-      name: 'Michael Johnson',
-      relationship: 'Spouse',
-      phone: '(555) 987-6543'
-    }
-  },
-  upcomingAppointments: [
-    {
-      id: 1,
-      date: '2024-03-15',
-      time: '10:00 AM',
-      doctor: 'Dr. Sarah Lee',
-      specialty: 'Endocrinology',
-      location: 'City Medical Center',
-      status: 'Scheduled'
-    },
-    {
-      id: 2,
-      date: '2024-04-02',
-      time: '2:30 PM',
-      doctor: 'Dr. Michael Chen',
-      specialty: 'Cardiology',
-      location: 'Heart Clinic',
-      status: 'Pending Confirmation'
-    }
-  ],
-  medications: [
-    { 
-      id: 1,
-      name: 'Insulin Glargine', 
-      dosage: '20mg', 
-      schedule: 'Once daily', 
-      startDate: '2023-11-01',
-      endDate: null,
-      prescribedBy: 'Dr. Sarah Lee',
-      refillsRemaining: 2
-    },
-    { 
-      id: 2,
-      name: 'Metformin', 
-      dosage: '500mg', 
-      schedule: 'Twice daily', 
-      startDate: '2023-09-15',
-      endDate: null,
-      prescribedBy: 'Dr. Emily Wong',
-      refillsRemaining: 1
-    }
-  ],
-  healthMetrics: {
-    bloodPressure: {
-      current: '120/80',
-      history: [
-        { date: '2024-02-01', value: '118/76' },
-        { date: '2024-01-15', value: '122/82' },
-        { date: '2023-12-01', value: '125/85' }
-      ]
-    },
-    bloodSugar: {
-      fasting: 95,
-      postMeal: 140,
-      trend: 'stable',
-      history: [
-        { date: '2024-02-01', fasting: 92, postMeal: 135 },
-        { date: '2024-01-15', fasting: 98, postMeal: 145 },
-        { date: '2023-12-01', fasting: 100, postMeal: 150 }
-      ]
-    },
-    heartRate: {
-      current: 72,
-      history: [
-        { date: '2024-02-01', value: 70 },
-        { date: '2024-01-15', value: 75 },
-        { date: '2023-12-01', value: 68 }
-      ]
-    }
-  },
-  medicalRecords: 5,
-  pendingBills: 250,
-  alerts: [
-    {
-      id: 1,
-      type: 'warning',
-      message: 'Blood sugar levels slightly elevated',
-      severity: 'medium',
-      date: '2024-03-01'
-    }
-  ],
-  quickActions: [
-    {
-      id: 1,
-      icon: Calendar,
-      label: 'Schedule Appointment',
-      color: 'bg-blue-600',
-      action: () => {}
-    },
-    {
-      id: 2,
-      icon: Pill,
-      label: 'Medication Refill',
-      color: 'bg-green-600',
-      action: () => {}
-    },
-    {
-      id: 3,
-      icon: FileText,
-      label: 'Medical Records',
-      color: 'bg-purple-600',
-      action: () => {}
-    },
-    {
-      id: 4,
-      icon: CreditCard,
-      label: 'Pay Bill',
-      color: 'bg-yellow-600',
-      action: () => {}
-    }
-  ]
-});
-
-const PatientDashboard = () => {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Simulate API call
-        const data = await new Promise((resolve) => {
-          setTimeout(() => {
-            resolve(getMockPatientData());
-          }, 500);
-        });
-        
-        setDashboardData(data);
-        setError(null);
-      } catch (err) {
-        console.error('Dashboard data fetch error', err);
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-xl text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-red-50 p-4">
-        <div className="text-center bg-white p-8 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">
-            Dashboard Error
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Unable to load dashboard data. Please try again later.
-          </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Quick Actions Section
-  const QuickActionsSection = () => (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">
-          Quick Actions
-        </h3>
-        <Activity className="h-5 w-5 text-indigo-500" />
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {dashboardData.quickActions.map((action) => (
-          <button
-            key={action.id}
-            onClick={action.action}
-            className={`${action.color} text-white rounded-lg p-4 flex flex-col items-center justify-center hover:opacity-90 transition-opacity`}
-          >
-            <action.icon className="h-6 w-6 mb-2" />
-            <span className="text-sm font-medium text-center">
-              {action.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
+// Dashboard card component
+const DashboardCard = ({ title, icon, count, linkTo, linkText, color }) => {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      {/* Welcome Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-        <div className="flex justify-between items-center">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="p-5">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Patient Dashboard
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Welcome back, {dashboardData.patientInfo.name}!
-            </p>
+            <h3 className="text-lg font-medium text-gray-700">{title}</h3>
+            <p className="text-3xl font-bold mt-2">{count}</p>
+          </div>
+          <div className={`p-3 rounded-full ${color}`}>
+            {icon}
           </div>
         </div>
-      </div>
-
-      {/* Dashboard Content */}
-      <div className="space-y-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">
-                Upcoming Appointments
-              </h3>
-              <Calendar className="h-5 w-5 text-blue-500" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {dashboardData.upcomingAppointments.length}
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">
-                Active Medications
-              </h3>
-              <Pill className="h-5 w-5 text-green-500" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {dashboardData.medications.length}
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">
-                Medical Records
-              </h3>
-              <FileText className="h-5 w-5 text-purple-500" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {dashboardData.medicalRecords}
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">
-                Pending Bills
-              </h3>
-              <CreditCard className="h-5 w-5 text-yellow-500" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              ${dashboardData.pendingBills}
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <QuickActionsSection />
+        <Link to={linkTo} className="block mt-4 text-sm font-medium text-blue-600 hover:text-blue-700">
+          {linkText} →
+        </Link>
       </div>
     </div>
   );
 };
 
-export default PatientDashboard;
+const PatientDashboard = () => {
+  const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    upcomingAppointments: [],
+    recentMedicalRecords: [],
+    pendingBills: [],
+    unreadMessages: 0
+  });
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch patient data
+        const patientResponse = await axios.get('/api/patients/dashboard', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        });
+        
+        setDashboardData(patientResponse.data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again later.');
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
+  
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="p-6">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome, {currentUser?.fullName}</h1>
+        <p className="text-gray-600 mt-1">Here's your health at a glance</p>
+      </div>
+      
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <DashboardCard 
+          title="Upcoming Appointments" 
+          icon={<CalendarIcon className="h-6 w-6 text-white" />}
+          count={dashboardData.upcomingAppointments.length}
+          linkTo="/appointments"
+          linkText="View all appointments"
+          color="bg-blue-500"
+        />
+        
+        <DashboardCard 
+          title="Medical Records" 
+          icon={<ClipboardListIcon className="h-6 w-6 text-white" />}
+          count={dashboardData.recentMedicalRecords.length}
+          linkTo="/medical-records"
+          linkText="View all records"
+          color="bg-green-500"
+        />
+        
+        <DashboardCard 
+          title="Pending Bills" 
+          icon={<CreditCardIcon className="h-6 w-6 text-white" />}
+          count={dashboardData.pendingBills.length}
+          linkTo="/billing"
+          linkText="View all bills"
+          color="bg-yellow-500"
+        />
+        
+        <DashboardCard 
+          title="Messages" 
+          icon={<ChatIcon className="h-6 w-6 text-white" />}
+          count={dashboardData.unreadMessages}
+          linkTo="/messages"
+          linkText="View all messages"
+          color="bg-purple-500"
+        />
+      </div>
+      
+      {/* Upcoming appointments */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-800">Upcoming Appointments</h2>
+        </div>
+        
+        <div className="p-6">
+          {dashboardData.upcomingAppointments.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No upcoming appointments</p>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {dashboardData.upcomingAppointments.map(appointment => (
+                <div key={appointment._id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-800">
+                      {appointment.appointmentType} with Dr. {appointment.doctorId?.fullName}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {format(new Date(appointment.scheduledDate), 'MMMM d, yyyy')} at {format(new Date(appointment.scheduledDate), 'h:mm a')}
+                    </p>
+                  </div>
+                  <div className="mt-2 sm:mt-0 flex space-x-2">
+                    <Link 
+                      to={`/medical-records/${record._id}`}
+                      className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
+                    >
+                      View
+                    </Link> 
+                      to={`/appointments/${appointment._id}`}
+                      className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
+                    >
+                      Details
+                    </Link>
+                    <Link 
+                      to={`/appointments/${appointment._id}/reschedule`}
+                      className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-md hover:bg-gray-100"
+                    >
+                      Reschedule
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="mt-4 text-center">
+            <Link 
+              to="/medical-records"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+            >
+              View All Medical Records
+            </Link>
+          </div>
+        </div>
+      </div>
+      
+      {/* Billing summary */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-800">Billing Summary</h2>
+        </div>
+        
+        <div className="p-6">
+          {dashboardData.pendingBills.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No pending bills</p>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {dashboardData.pendingBills.map(bill => (
+                <div key={bill._id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-800">
+                      Invoice #{bill.invoiceNumber}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {format(new Date(bill.dueDate), 'MMMM d, yyyy')} • ${bill.amount.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="mt-2 sm:mt-0">
+                    <Link 
+                      to={`/billing/pay/${bill._id}`}
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    >
+                      Pay Now
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="mt-4 text-center">
+            <Link 
+              to="/billing"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700"
+            >
+              View Billing History
+            </Link>
+          </div>
+        </div>
+      </div>
+      
+      {/* Health metrics summary */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-800">Health Metrics</h2>
+        </div>
+        
+        <div className="p-6">
+          {!dashboardData.healthMetrics ? (
+            <p className="text-gray-500 text-center py-4">No health metrics available</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-500">Blood Pressure</p>
+                <p className="text-2xl font-bold mt-1">
+                  {dashboardData.healthMetrics.bloodPressure || 'N/A'}
+                </p>
+              </div>
+              
+              <div className="border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-500">Heart Rate</p>
+                <p className="text-2xl font-bold mt-1">
+                  {dashboardData.healthMetrics.heartRate || 'N/A'} <span className="text-sm font-normal">bpm</span>
+                </p>
+              </div>
+              
+              <div className="border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-500">BMI</p>
+                <p className="text-2xl font-bold mt-1">
+                  {dashboardData.healthMetrics.bmi || 'N/A'}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <div className="mt-6 text-center">
+            <Link 
+              to="/health-metrics"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700"
+            >
+              View All Health Metrics
+            </Link>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-800">Recent Medical Records</h2>
+        </div>
+        
+        <div className="p-6">
+          {dashboardData.recentMedicalRecords.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No recent medical records</p>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {dashboardData.recentMedicalRecords.map(record => (
+                <div key={record._id} className="py-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-gray-800">{record.recordType}</p>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(record.recordDate), 'MMMM d, yyyy')} • Dr. {record.provider?.fullName}
+                      </p>
+                    </div>
+                    <Link
+
+</rewritten_file>

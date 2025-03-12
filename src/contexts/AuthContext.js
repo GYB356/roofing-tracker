@@ -1,7 +1,7 @@
 // contexts/AuthContext.js
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import AuthService from '../services/AuthService';
-import { USE_MOCK_API } from '../config';
+import axios from 'axios';
+import jwt_decode from 'jwt-decode';
 
 const AuthContext = createContext();
 
@@ -12,125 +12,201 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [userRole, setUserRole] = useState(null);
-  const [apiStatus, setApiStatus] = useState({ available: false, checking: true });
-
-  // Initialize auth state and check API connection
+  const [error, setError] = useState(null);
+  
+  // Check if token exists and is valid on initial load
   useEffect(() => {
-    const initAuth = async () => {
+    const checkAuthStatus = async () => {
       try {
-        // Check API connection first
-        if (!USE_MOCK_API) {
-          const connectionTest = await AuthService.testConnection();
-          setApiStatus({ 
-            available: connectionTest.success, 
-            checking: false,
-            message: connectionTest.message
-          });
-          
-          if (!connectionTest.success) {
-            console.warn('API connection test failed, please check your server or use mock mode');
-          }
-        } else {
-          setApiStatus({ available: true, checking: false });
+        const token = localStorage.getItem('auth_token');
+        
+        if (!token) {
+          setCurrentUser(null);
+          setLoading(false);
+          return;
         }
         
-        // Check if the user is already logged in
-        if (AuthService.isAuthenticated()) {
-          const user = AuthService.getCurrentUser();
-          setCurrentUser(user);
-          setUserRole(user?.role);
-          setIsAuthenticated(true);
+        // Check if token is expired
+        const decodedToken = jwt_decode(token);
+        const currentTime = Date.now() / 1000;
+        
+        if (decodedToken.exp < currentTime) {
+          // Token is expired, remove it
+          localStorage.removeItem('auth_token');
+          setCurrentUser(null);
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error('Error initializing auth context:', error);
-        // Clear credentials if error occurs
-        await logout();
-      } finally {
+        
+        // Token is valid, set up axios header
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Get current user profile
+        const response = await axios.get('/api/auth/me');
+        setCurrentUser(response.data);
         setLoading(false);
-        setAuthChecked(true);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        localStorage.removeItem('auth_token');
+        setCurrentUser(null);
+        setLoading(false);
       }
     };
     
-    initAuth();
+    checkAuthStatus();
   }, []);
-
+  
   // Login function
-  const login = async (email, password, rememberMe = false, role = 'patient') => {
+  const login = async (email, password) => {
     try {
-      const response = await AuthService.login(email, password, rememberMe, role);
+      setError(null);
       
-      // Update state
-      setCurrentUser(response.user);
-      setUserRole(response.user.role);
-      setIsAuthenticated(true);
+      const response = await axios.post('/api/auth/login', { 
+        email, 
+        password 
+      });
       
-      return response.user;
+      const { token, user } = response.data;
+      
+      // Store token and set current user
+      localStorage.setItem('auth_token', token);
+      
+      // Set authorization header for future requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      setCurrentUser(user);
+      return user;
     } catch (error) {
-      console.error('Login error:', error);
+      setError(
+        error.response?.data?.message || 
+        'Failed to login. Please check your credentials.'
+      );
       throw error;
     }
   };
-
+  
   // Register function
   const register = async (userData) => {
     try {
-      const response = await AuthService.register(userData);
+      setError(null);
       
-      // Update state after successful registration
-      setCurrentUser(response.user);
-      setUserRole(response.user.role);
-      setIsAuthenticated(true);
+      const response = await axios.post('/api/auth/register', userData);
       
-      return response;
+      const { token, user } = response.data;
+      
+      // Store token and set current user
+      localStorage.setItem('auth_token', token);
+      
+      // Set authorization header for future requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      setCurrentUser(user);
+      return user;
     } catch (error) {
-      console.error('Registration error:', error);
+      setError(
+        error.response?.data?.message || 
+        'Registration failed. Please try again.'
+      );
       throw error;
     }
   };
-
+  
   // Logout function
-  const logout = useCallback(async () => {
+  const logout = async () => {
     try {
-      // Call logout endpoint to invalidate token on server
-      await AuthService.logout();
+      // Call logout endpoint
+      await axios.post('/api/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Update state
+      // Remove token and user data regardless of API response
+      localStorage.removeItem('auth_token');
+      delete axios.defaults.headers.common['Authorization'];
       setCurrentUser(null);
-      setUserRole(null);
-      setIsAuthenticated(false);
     }
-  }, []);
-
-  // Check if user has a specific permission
-  const hasPermission = useCallback((permission) => {
-    if (!currentUser || !currentUser.permissions) {
-      return false;
+  };
+  
+  // Update user profile
+  const updateProfile = async (userData) => {
+    try {
+      setError(null);
+      
+      const response = await axios.put('/api/auth/profile', userData);
+      
+      setCurrentUser(prevUser => ({
+        ...prevUser,
+        ...response.data
+      }));
+      
+      return response.data;
+    } catch (error) {
+      setError(
+        error.response?.data?.message || 
+        'Failed to update profile. Please try again.'
+      );
+      throw error;
     }
-    return currentUser.permissions.includes(permission);
-  }, [currentUser]);
-
-  // Auth context value
+  };
+  
+  // Reset password request
+  const requestPasswordReset = async (email) => {
+    try {
+      setError(null);
+      
+      const response = await axios.post('/api/auth/forgot-password', { email });
+      return response.data;
+    } catch (error) {
+      setError(
+        error.response?.data?.message || 
+        'Failed to request password reset. Please try again.'
+      );
+      throw error;
+    }
+  };
+  
+  // Reset password with token
+  const resetPassword = async (token, password) => {
+    try {
+      setError(null);
+      
+      const response = await axios.post('/api/auth/reset-password', { 
+        token, 
+        password 
+      });
+      
+      return response.data;
+    } catch (error) {
+      setError(
+        error.response?.data?.message || 
+        'Failed to reset password. Token may be invalid or expired.'
+      );
+      throw error;
+    }
+  };
+  
+  // Check if user has a specific role
+  const hasRole = (role) => {
+    return currentUser?.role === role;
+  };
+  
+  // Context value
   const value = {
     currentUser,
-    isAuthenticated,
-    userRole,
     loading,
-    apiStatus,
+    error,
+    isAuthenticated: !!currentUser,
     login,
     register,
     logout,
-    hasPermission,
-    authChecked
+    updateProfile,
+    requestPasswordReset,
+    resetPassword,
+    hasRole
   };
-
+  
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

@@ -68,6 +68,56 @@ const medicalRecordService = {
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Note addition failed');
     }
+  },
+
+  // Delete medical record
+  deleteRecord: async (recordId) => {
+    try {
+      await api.delete(`/records/${recordId}`);
+      return { message: 'Medical record deleted successfully' };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Record deletion failed');
+    }
+  },
+
+  // Add attachment to record
+  addAttachment: async (recordId, attachmentData) => {
+    try {
+      const response = await api.post(`/records/${recordId}/attachments`, attachmentData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Attachment addition failed');
+    }
+  },
+
+  // Remove attachment from record
+  removeAttachment: async (recordId, attachmentId) => {
+    try {
+      await api.delete(`/records/${recordId}/attachments/${attachmentId}`);
+      return { message: 'Attachment removed successfully' };
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Attachment removal failed');
+    }
+  },
+
+  // Get lab results for a patient
+  getLabResults: async (patientId, filters = {}) => {
+    try {
+      const response = await api.get(`/records/${patientId}/lab-results`, { params: filters });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch lab results');
+    }
+  },
+
+  // Get imaging studies for a patient
+  getImagingStudies: async (patientId, filters = {}) => {
+    try {
+      const response = await api.get(`/records/${patientId}/imaging-studies`, { params: filters });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch imaging studies');
+    }
   }
 };
 
