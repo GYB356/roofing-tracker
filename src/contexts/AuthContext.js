@@ -135,6 +135,20 @@ export const AuthProvider = ({ children }) => {
     return currentUser?.role === role;
   };
   
+  const handleUserRole = (user) => {
+    // Map role to specific dashboard route
+    const roleRouteMap = {
+      'admin': '/admin/dashboard',
+      'provider': '/provider/dashboard',
+      'patient': '/patient/dashboard'
+    };
+    
+    // Set role-specific data in localStorage for easy access
+    localStorage.setItem('userRole', user.role);
+    
+    return roleRouteMap[user.role] || '/';
+  };
+  
   // Context value
   const value = {
     currentUser,
@@ -147,7 +161,8 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     requestPasswordReset,
     resetPassword,
-    hasRole
+    hasRole,
+    handleUserRole
   };
   
   return (
