@@ -1,7 +1,7 @@
 // components/MedicalRecords.js - Fixed uploadDocument undefined
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMedicalRecords, uploadDocument } from '../contexts/MedicalRecordsContext';
+import { useMedicalRecords, uploadDocument } from '../contexts/MedicalRecordsContext.js';
 
 const MedicalRecords = () => {
   const { records, loading, error, fetchRecords } = useMedicalRecords();

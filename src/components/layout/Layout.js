@@ -19,27 +19,13 @@ const PageLayout = ({
   actions
 }) => {
   return (
-    <div className="container mx-auto px-4 py-6 max-w-screen-xl">
-      {/* Header section */}
-      <div className={`${bgColor} rounded-t-lg shadow-lg overflow-hidden`}>
-        <div className="px-6 py-8 text-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl font-bold">{title}</h1>
-              <p className={`mt-2 ${textColor}`}>{description}</p>
-            </div>
-            {actions && (
-              <div className="ml-4">
-                {actions}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* Content section */}
-      <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-lg p-6">
-        {children}
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <Sidebar />
+      <div className="flex-1 overflow-auto">
+        <main className="p-6 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen">
+          {/* This is where your page content goes */}
+          {children}
+        </main>
       </div>
     </div>
   );

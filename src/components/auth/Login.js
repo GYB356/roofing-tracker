@@ -1,12 +1,11 @@
 // components/auth/Login.js
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { 
-  LockClosedIcon, 
+import { useAuth } from '../../contexts/AuthContext.js';
+import { LockClosedIcon, 
   ExclamationCircleIcon,
   InformationCircleIcon
-} from '@heroicons/react/outline';
+ } from '@heroicons/react/24/outline';
 
 const Login = () => {
   const { login, isAuthenticated, error: authError } = useAuth();

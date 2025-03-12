@@ -1,8 +1,8 @@
 // services/AuthService.js
-import api from './api';
+import api from './api.js';
 import jwt_decode from 'jwt-decode';
 import axios from 'axios';
-import { API_URL, USE_MOCK_API } from '../config';
+import { API_URL, USE_MOCK_API } from '../config.js';
 
 // Helper function to check if token is expired
 const isTokenExpired = (token) => {
@@ -118,6 +118,63 @@ const authService = {
         if (rememberMe) {
           localStorage.setItem('rememberedEmail', email);
         }
+        
+        // Create mock dashboard data
+        const mockDashboardData = {
+          upcomingAppointments: [
+            {
+              _id: 'appt1',
+              appointmentType: 'Annual Checkup',
+              doctorId: {
+                fullName: 'Dr. Sarah Johnson'
+              },
+              scheduledDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days from now
+            },
+            {
+              _id: 'appt2',
+              appointmentType: 'Vaccination',
+              doctorId: {
+                fullName: 'Dr. Michael Chen'
+              },
+              scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+            }
+          ],
+          recentMedicalRecords: [
+            {
+              _id: 'record1',
+              recordType: 'Blood Test Results',
+              recordDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
+              provider: {
+                fullName: 'Dr. Sarah Johnson'
+              }
+            },
+            {
+              _id: 'record2',
+              recordType: 'X-Ray Report',
+              recordDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
+              provider: {
+                fullName: 'Dr. Robert Williams'
+              }
+            }
+          ],
+          pendingBills: [
+            {
+              _id: 'bill1',
+              invoiceNumber: 'INV-2023-0042',
+              amount: 125.00,
+              dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString() // 15 days from now
+            }
+          ],
+          unreadMessages: 3,
+          healthMetrics: {
+            bloodPressure: '120/80',
+            heartRate: 72,
+            bmi: 24.5
+          }
+        };
+
+        // Store the mock dashboard data in localStorage for other components to access
+        localStorage.setItem('mockDashboardData', JSON.stringify(mockDashboardData));
         
         return { 
           success: true, 

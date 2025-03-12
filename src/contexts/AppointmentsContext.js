@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import appointmentService from '../services/appointmentService';
+import appointmentService from '../services/appointmentService.js';
 
 const AppointmentsContext = createContext();
 

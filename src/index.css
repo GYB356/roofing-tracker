@@ -21,3 +21,15 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Set light theme as default */
+:root {
+  color-scheme: light;
+}
+
+/* Apply background to the entire app */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}

@@ -1,57 +1,53 @@
 // services/api.js
 import axios from 'axios';
+import { API_URL } from '../config.js';
 
-// Create custom axios instance
+// Create an axios instance with default config
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
-  timeout: 30000,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Add request interceptor for authentication
+// Request interceptor to add auth token
 api.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('auth_token');
+  (config) => {
+    const token = localStorage.getItem('token');
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  error => {
+  (error) => {
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor for error handling
+// Response interceptor to handle auth errors
 api.interceptors.response.use(
-  response => {
+  (response) => {
     return response;
   },
-  error => {
+  async (error) => {
     const originalRequest = error.config;
     
-    // Handle token expiration
+    // If the error is 401 and not already retrying
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // If token is expired, log out
-      if (error.response.data.message === 'Token expired') {
-        // Clear auth data
-        localStorage.removeItem('auth_token');
-        
-        // Redirect to login page
-        window.location.href = '/login?expired=true';
-        return Promise.reject(error);
-      }
+      originalRequest._retry = true;
       
-      // For other 401 errors, let the components handle them
-      return Promise.reject(error);
-    }
-    
-    // Handle network errors
-    if (error.message === 'Network Error') {
-      console.error('Network error detected');
-      // You could dispatch a global notification here
+      try {
+        // Import auth service dynamically to avoid circular dependency
+        const { default: AuthService } = await import('./AuthService.js');
+        const refreshed = await AuthService.refreshToken();
+        
+        if (refreshed) {
+          // Try the request again with new token
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+      }
     }
     
     return Promise.reject(error);

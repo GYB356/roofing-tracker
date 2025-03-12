@@ -2,13 +2,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css'; // Include your styles
-import App from './App';
-import reportWebVitals from './reportWebVitals'; // If you're using Create React App
+import App from './App.js';
+import reportWebVitals from './reportWebVitals.js'; // If you're using Create React App
 
 // Import services with proper casing
-import AuthService from './services/AuthService';
-import ProviderService from './services/ProviderService';
-import setupAxios from './services/api.config';
+import AuthService from './services/AuthService.js';
+import ProviderService from './services/ProviderService.js';
+import setupAxios from './services/api.config.js';
 
 // Initialize global API configuration
 // Wrap in try/catch to prevent initialization errors from breaking rendering

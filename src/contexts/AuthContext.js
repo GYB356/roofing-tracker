@@ -1,7 +1,6 @@
 // contexts/AuthContext.js
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import jwt_decode from 'jwt-decode';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AuthService from '../services/AuthService.js';
 
 const AuthContext = createContext();
 
@@ -14,40 +13,25 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Check if token exists and is valid on initial load
+  // Check if user is authenticated on initial load
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        // Check if user is authenticated using AuthService
+        const isAuthenticated = AuthService.isAuthenticated();
         
-        if (!token) {
+        if (!isAuthenticated) {
           setCurrentUser(null);
           setLoading(false);
           return;
         }
         
-        // Check if token is expired
-        const decodedToken = jwt_decode(token);
-        const currentTime = Date.now() / 1000;
-        
-        if (decodedToken.exp < currentTime) {
-          // Token is expired, remove it
-          localStorage.removeItem('auth_token');
-          setCurrentUser(null);
-          setLoading(false);
-          return;
-        }
-        
-        // Token is valid, set up axios header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        
-        // Get current user profile
-        const response = await axios.get('/api/auth/me');
-        setCurrentUser(response.data);
+        // Get current user from local storage or API
+        const user = AuthService.getCurrentUser();
+        setCurrentUser(user);
         setLoading(false);
       } catch (error) {
         console.error('Auth check error:', error);
-        localStorage.removeItem('auth_token');
         setCurrentUser(null);
         setLoading(false);
       }
@@ -57,30 +41,17 @@ export const AuthProvider = ({ children }) => {
   }, []);
   
   // Login function
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = false) => {
     try {
       setError(null);
       
-      const response = await axios.post('/api/auth/login', { 
-        email, 
-        password 
-      });
+      // Use AuthService login
+      const response = await AuthService.login(email, password, rememberMe);
       
-      const { token, user } = response.data;
-      
-      // Store token and set current user
-      localStorage.setItem('auth_token', token);
-      
-      // Set authorization header for future requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      setCurrentUser(user);
-      return user;
+      setCurrentUser(response.user);
+      return response.user;
     } catch (error) {
-      setError(
-        error.response?.data?.message || 
-        'Failed to login. Please check your credentials.'
-      );
+      setError(error.message || 'Failed to login. Please check your credentials.');
       throw error;
     }
   };
@@ -90,23 +61,13 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       
-      const response = await axios.post('/api/auth/register', userData);
+      // Use AuthService register
+      const response = await AuthService.register(userData);
       
-      const { token, user } = response.data;
-      
-      // Store token and set current user
-      localStorage.setItem('auth_token', token);
-      
-      // Set authorization header for future requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      setCurrentUser(user);
-      return user;
+      setCurrentUser(response.user);
+      return response.user;
     } catch (error) {
-      setError(
-        error.response?.data?.message || 
-        'Registration failed. Please try again.'
-      );
+      setError(error.message || 'Registration failed. Please try again.');
       throw error;
     }
   };
@@ -114,34 +75,30 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
-      // Call logout endpoint
-      await axios.post('/api/auth/logout');
+      await AuthService.logout();
+      setCurrentUser(null);
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      // Remove token and user data regardless of API response
-      localStorage.removeItem('auth_token');
-      delete axios.defaults.headers.common['Authorization'];
       setCurrentUser(null);
     }
   };
   
-  // Update user profile
+  // Update user profile (keeping for backward compatibility)
   const updateProfile = async (userData) => {
     try {
       setError(null);
       
-      const response = await axios.put('/api/auth/profile', userData);
-      
+      // This function would need to be added to AuthService
+      // For now, just returning the userData
       setCurrentUser(prevUser => ({
         ...prevUser,
-        ...response.data
+        ...userData
       }));
       
-      return response.data;
+      return userData;
     } catch (error) {
       setError(
-        error.response?.data?.message || 
+        error.message || 
         'Failed to update profile. Please try again.'
       );
       throw error;
@@ -152,14 +109,9 @@ export const AuthProvider = ({ children }) => {
   const requestPasswordReset = async (email) => {
     try {
       setError(null);
-      
-      const response = await axios.post('/api/auth/forgot-password', { email });
-      return response.data;
+      return await AuthService.requestPasswordReset(email);
     } catch (error) {
-      setError(
-        error.response?.data?.message || 
-        'Failed to request password reset. Please try again.'
-      );
+      setError(error.message || 'Failed to request password reset. Please try again.');
       throw error;
     }
   };
@@ -168,16 +120,10 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (token, password) => {
     try {
       setError(null);
-      
-      const response = await axios.post('/api/auth/reset-password', { 
-        token, 
-        password 
-      });
-      
-      return response.data;
+      return await AuthService.resetPassword(token, password);
     } catch (error) {
       setError(
-        error.response?.data?.message || 
+        error.message || 
         'Failed to reset password. Token may be invalid or expired.'
       );
       throw error;

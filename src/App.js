@@ -1,38 +1,38 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext.js';
 
 // Import core components directly
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
-import Sidebar from './components/layout/Sidebar';
-import VerifyEmailSent from './components/auth/VerifyEmailSent';
-import { AppointmentsProvider } from './contexts/AppointmentsContext';
-import { MedicalRecordsProvider } from './contexts/MedicalRecordsContext';
-import AppointmentsList from './components/AppointmentsList';
-import MedicalRecords from './components/MedicalRecords';
+import Login from './components/auth/Login.js';
+import Register from './components/auth/Register.js';
+import Sidebar from './components/layout/Sidebar.js';
+import VerifyEmailSent from './components/auth/VerifyEmailSent.js';
+import { AppointmentsProvider } from './contexts/AppointmentsContext.js';
+import { MedicalRecordsProvider } from './contexts/MedicalRecordsContext.js';
+import AppointmentsList from './components/AppointmentsList.js';
+import MedicalRecords from './components/MedicalRecords.js';
 
 // Lazy load other components with fixed file paths
-const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
-const ProviderDashboard = lazy(() => import('./components/dashboard/ProviderDashboard'));
-const AppointmentsPage = lazy(() => import('./components/appointments/AppointmentsPage'));
-const ScheduleNewPage = lazy(() => import('./components/appointments/ScheduleNewPage'));
-const CalendarViewPage = lazy(() => import('./components/appointments/CalendarViewPage'));
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard.js'));
+const ProviderDashboard = lazy(() => import('./components/dashboard/ProviderDashboard.js'));
+const AppointmentsPage = lazy(() => import('./components/appointments/AppointmentsPage.js'));
+const ScheduleNewPage = lazy(() => import('./components/appointments/ScheduleNewPage.js'));
+const CalendarViewPage = lazy(() => import('./components/appointments/CalendarViewPage.js'));
 
 // Medical Records components
-const MedicalRecordsPage = lazy(() => import('./components/medical-records/medicalrecordspage'));
-const HealthSummaryPage = lazy(() => import('./components/medical-records/HealthSummaryPage'));
-const MedicationsPage = lazy(() => import('./components/medical-records/MedicationsPage'));
-const LabResultsPage = lazy(() => import('./components/medical-records/LabResultsPage'));
-const ImagingPage = lazy(() => import('./components/medical-records/ImagingPage'));
+const MedicalRecordsPage = lazy(() => import('./components/medical-records/medicalrecordspage.js'));
+const HealthSummaryPage = lazy(() => import('./components/medical-records/HealthSummaryPage.js'));
+const MedicationsPage = lazy(() => import('./components/medical-records/MedicationsPage.js'));
+const LabResultsPage = lazy(() => import('./components/medical-records/LabResultsPage.js'));
+const ImagingPage = lazy(() => import('./components/medical-records/ImagingPage.js'));
 
 // New component lazy loads
-const ProjectDetail = lazy(() => import('./components/projects/ProjectDetail'));
-const TaskForm = lazy(() => import('./components/tasks/TaskForm'));
-const TaskDetail = lazy(() => import('./components/tasks/TaskDetail'));
-const CalendarView = lazy(() => import('./components/calendar/CalendarView'));
-const EventForm = lazy(() => import('./components/calendar/EventForm'));
-const ClientDetail = lazy(() => import('./components/clients/ClientDetail'));
+const ProjectDetail = lazy(() => import('./components/projects/ProjectDetail.js'));
+const TaskForm = lazy(() => import('./components/tasks/TaskForm.js'));
+const TaskDetail = lazy(() => import('./components/tasks/TaskDetail.js'));
+const CalendarView = lazy(() => import('./components/calendar/CalendarView.js'));
+const EventForm = lazy(() => import('./components/calendar/EventForm.js'));
+const ClientDetail = lazy(() => import('./components/clients/ClientDetail.js'));
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {

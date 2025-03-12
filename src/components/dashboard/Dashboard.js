@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import AdminDashboard from './AdminDashboard';
-import ProviderDashboard from './ProviderDashboard';
-import PatientDashboard from './PatientDashboard';
+import { useAuth } from '../../contexts/AuthContext.js';
+import AdminDashboard from './AdminDashboard.js';
+import ProviderDashboard from './ProviderDashboard.js';
+import PatientDashboard from './PatientDashboard.js';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();

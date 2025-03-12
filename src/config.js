@@ -2,8 +2,8 @@
 // Centralized configuration for the application
 
 // API configuration
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-export const USE_MOCK_API = process.env.REACT_APP_MOCK_API === 'true';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+export const USE_MOCK_API = process.env.REACT_APP_MOCK_API === 'true' || true; // Enable mock API by default
 
 // Feature flags
 export const FEATURES = {

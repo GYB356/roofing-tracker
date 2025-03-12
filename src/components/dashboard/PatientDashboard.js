@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext.js';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { 
   CalendarIcon, 
-  ClipboardListIcon, 
+  ClipboardDocumentListIcon,  // Changed from ClipboardListIcon
   ChartBarIcon, 
   CreditCardIcon, 
   UserIcon, 
-  ChatIcon,
+  ChatBubbleLeftIcon,  // Changed from ChatIcon
   ExclamationCircleIcon
-} from '@heroicons/react/outline';
+} from '@heroicons/react/24/outline';
 
 // Dashboard card component
 const DashboardCard = ({ title, icon, count, linkTo, linkText, color }) => {
@@ -49,10 +49,21 @@ const PatientDashboard = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Fetch patient data
+        // Check for mock data in localStorage first (for development)
+        const mockDataStr = localStorage.getItem('mockDashboardData');
+        
+        if (mockDataStr) {
+          // If mock data exists, use it
+          const mockData = JSON.parse(mockDataStr);
+          setDashboardData(mockData);
+          setLoading(false);
+          return;
+        }
+        
+        // If no mock data, make the real API call
         const patientResponse = await axios.get('/api/patients/dashboard', {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`
+            Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         });
         
@@ -90,7 +101,6 @@ const PatientDashboard = () => {
       </div>
     );
   }
-  
   return (
     <div className="p-6">
       <div className="mb-8">
@@ -111,7 +121,7 @@ const PatientDashboard = () => {
         
         <DashboardCard 
           title="Medical Records" 
-          icon={<ClipboardListIcon className="h-6 w-6 text-white" />}
+          icon={<ClipboardDocumentListIcon className="h-6 w-6 text-white" />}
           count={dashboardData.recentMedicalRecords.length}
           linkTo="/medical-records"
           linkText="View all records"
@@ -129,7 +139,7 @@ const PatientDashboard = () => {
         
         <DashboardCard 
           title="Messages" 
-          icon={<ChatIcon className="h-6 w-6 text-white" />}
+          icon={<ChatBubbleLeftIcon className="h-6 w-6 text-white" />}
           count={dashboardData.unreadMessages}
           linkTo="/messages"
           linkText="View all messages"
@@ -159,12 +169,8 @@ const PatientDashboard = () => {
                     </p>
                   </div>
                   <div className="mt-2 sm:mt-0 flex space-x-2">
+                    {/* Fixed: changed record._id to appointment._id */}
                     <Link 
-                      to={`/medical-records/${record._id}`}
-                      className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
-                    >
-                      View
-                    </Link> 
                       to={`/appointments/${appointment._id}`}
                       className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
                     >
@@ -175,6 +181,49 @@ const PatientDashboard = () => {
                       className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-md hover:bg-gray-100"
                     >
                       Reschedule
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="mt-4 text-center">
+            <Link 
+              to="/appointments"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+            >
+              View All Appointments
+            </Link>
+          </div>
+        </div>
+      </div>
+      
+      {/* Recent Medical Records */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-800">Recent Medical Records</h2>
+        </div>
+        
+        <div className="p-6">
+          {dashboardData.recentMedicalRecords.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No recent medical records</p>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {dashboardData.recentMedicalRecords.map(record => (
+                <div key={record._id} className="py-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-gray-800">{record.recordType}</p>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(record.recordDate), 'MMMM d, yyyy')} • Dr. {record.provider?.fullName}
+                      </p>
+                    </div>
+                    <Link
+                      to={`/medical-records/${record._id}`}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      View Details
                     </Link>
                   </div>
                 </div>
@@ -282,25 +331,8 @@ const PatientDashboard = () => {
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-800">Recent Medical Records</h2>
-        </div>
-        
-        <div className="p-6">
-          {dashboardData.recentMedicalRecords.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">No recent medical records</p>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {dashboardData.recentMedicalRecords.map(record => (
-                <div key={record._id} className="py-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-800">{record.recordType}</p>
-                      <p className="text-sm text-gray-500">
-                        {format(new Date(record.recordDate), 'MMMM d, yyyy')} • Dr. {record.provider?.fullName}
-                      </p>
-                    </div>
-                    <Link
+    </div>
+  );
+};
 
-</rewritten_file>
+export default PatientDashboard;

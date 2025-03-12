@@ -1,7 +1,7 @@
 // contexts/MedicalRecordsContext.js - Fixed await syntax
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import { hasPermission, secureStorage } from '../utils/security';
+import { useAuth } from './AuthContext.js';
+import { hasPermission, secureStorage } from '../utils/security.js';
 
 const MedicalRecordsContext = createContext();
 

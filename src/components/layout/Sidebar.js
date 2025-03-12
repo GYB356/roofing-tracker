@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext.js';
 import {
   FiHome,
   FiCalendar,
@@ -20,6 +20,7 @@ import {
   FiLogOut,
   FiLock
 } from 'react-icons/fi';
+import ThemeSwitcher from '../common/ThemeSwitcher.js';
 
 const Sidebar = () => {
   const location = useLocation();
@@ -216,7 +217,7 @@ const Sidebar = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 transition-all duration-300 transform bg-gray-900 text-white
+        className={`h-screen flex flex-col w-64 bg-white dark:bg-gray-900 text-gray-800 dark:text-white border-r border-gray-200 dark:border-gray-700
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           ${isCollapsed ? 'w-20' : 'w-64'}
           lg:relative lg:translate-x-0 lg:flex lg:flex-col
@@ -336,31 +337,20 @@ const Sidebar = () => {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
-          <Link
-            to="/help"
-            onClick={closeMobileMenu}
-            className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors"
-            role="menuitem"
-          >
-            <FiHelpCircle className="w-5 h-5" />
-            {!isCollapsed && <span className="ml-3">Help & Support</span>}
-          </Link>
-          
-          {currentUser && (
-            <button
+        <div className="mt-auto">
+          <div className="px-4 py-2 flex items-center justify-between">
+            <ThemeSwitcher />
+            <button 
               onClick={() => {
                 logout();
                 closeMobileMenu();
               }}
-              className="flex items-center w-full px-4 py-3 mt-2 text-left rounded-lg hover:bg-gray-800 transition-colors text-red-400 hover:text-red-300"
-              role="menuitem"
-              aria-label="Logout"
+              className="text-red-500 hover:text-red-700 flex items-center"
             >
-              <FiLogOut className="w-5 h-5" />
-              {!isCollapsed && <span className="ml-3">Logout</span>}
+              <FiLogOut className="h-5 w-5 mr-2" />
+              Logout
             </button>
-          )}
+          </div>
         </div>
       </aside>
     </>

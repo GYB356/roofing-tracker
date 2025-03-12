@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppointments } from '../contexts/AppointmentsContext';
+import { useAppointments } from '../contexts/AppointmentsContext.js';
 
 const AppointmentsList = () => {
   const { appointments, loading, error } = useAppointments();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import providerService from '../../services/ProviderService';
+import { useAuth } from '../../contexts/AuthContext.js';
+import providerService from '../../services/ProviderService.js';
 import { 
   Calendar, 
   FileText, 
