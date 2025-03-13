@@ -1,38 +1,60 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext.js';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Import core components directly
-import Login from './components/auth/Login.js';
-import Register from './components/auth/Register.js';
-import Sidebar from './components/layout/Sidebar.js';
-import VerifyEmailSent from './components/auth/VerifyEmailSent.js';
-import { AppointmentsProvider } from './contexts/AppointmentsContext.js';
-import { MedicalRecordsProvider } from './contexts/MedicalRecordsContext.js';
-import AppointmentsList from './components/AppointmentsList.js';
-import MedicalRecords from './components/MedicalRecords.js';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import Sidebar from './components/layout/Sidebar';
+import VerifyEmailSent from './components/auth/VerifyEmailSent';
+import { AppointmentsProvider } from './contexts/AppointmentsContext';
+import { MedicalRecordsProvider } from './contexts/MedicalRecordsContext';
 
-// Lazy load other components with fixed file paths
-const Dashboard = lazy(() => import('./components/dashboard/Dashboard.js'));
-const ProviderDashboard = lazy(() => import('./components/dashboard/ProviderDashboard.js'));
-const AppointmentsPage = lazy(() => import('./components/appointments/AppointmentsPage.js'));
-const ScheduleNewPage = lazy(() => import('./components/appointments/ScheduleNewPage.js'));
-const CalendarViewPage = lazy(() => import('./components/appointments/CalendarViewPage.js'));
+// Lazy load other components
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
+const ProviderDashboard = lazy(() => import('./components/dashboard/ProviderDashboard'));
+const PatientDashboard = lazy(() => import('./components/dashboard/PatientDashboard'));
+const AppointmentsPage = lazy(() => import('./components/appointments/AppointmentsPage'));
+const ScheduleNewPage = lazy(() => import('./components/appointments/ScheduleNewPage'));
+const CalendarViewPage = lazy(() => import('./components/appointments/CalendarViewPage'));
 
 // Medical Records components
-const MedicalRecordsPage = lazy(() => import('./components/medical-records/medicalrecordspage.js'));
-const HealthSummaryPage = lazy(() => import('./components/medical-records/HealthSummaryPage.js'));
-const MedicationsPage = lazy(() => import('./components/medical-records/MedicationsPage.js'));
-const LabResultsPage = lazy(() => import('./components/medical-records/LabResultsPage.js'));
-const ImagingPage = lazy(() => import('./components/medical-records/ImagingPage.js'));
+const MedicalRecordsPage = lazy(() => import('./components/medical-records/MedicalRecordsPage'));
+const HealthSummaryPage = lazy(() => import('./components/medical-records/HealthSummaryPage'));
+const MedicationsPage = lazy(() => import('./components/medical-records/MedicationsPage'));
+const LabResultsPage = lazy(() => import('./components/medical-records/LabResultsPage'));
+const ImagingPage = lazy(() => import('./components/medical-records/ImagingPage'));
 
-// New component lazy loads
-const ProjectDetail = lazy(() => import('./components/projects/ProjectDetail.js'));
-const TaskForm = lazy(() => import('./components/tasks/TaskForm.js'));
-const TaskDetail = lazy(() => import('./components/tasks/TaskDetail.js'));
-const CalendarView = lazy(() => import('./components/calendar/CalendarView.js'));
-const EventForm = lazy(() => import('./components/calendar/EventForm.js'));
-const ClientDetail = lazy(() => import('./components/clients/ClientDetail.js'));
+// New component lazy loads - Time Tracking
+const TimeTrackingPage = lazy(() => import('./components/time-tracking/TimeTrackingPage'));
+const TimeEntriesList = lazy(() => import('./components/time-tracking/TimeEntriesList'));
+const TimeSummary = lazy(() => import('./components/time-tracking/TimeSummary'));
+const TimeEntryForm = lazy(() => import('./components/time-tracking/TimeEntryForm'));
+const TimeTrackingSettings = lazy(() => import('./components/time-tracking/TimeTrackingSettings'));
+
+// Project and Task management
+const ProjectDetail = lazy(() => import('./components/projects/ProjectDetail'));
+const ProjectList = lazy(() => import('./components/projects/ProjectList'));
+const TaskForm = lazy(() => import('./components/tasks/TaskForm'));
+const TaskDetail = lazy(() => import('./components/tasks/TaskDetail'));
+const KanbanBoard = lazy(() => import('./components/KanbanBoard'));
+
+// Calendar and Clients
+const CalendarView = lazy(() => import('./components/calendar/CalendarView'));
+const EventForm = lazy(() => import('./components/calendar/EventForm'));
+const ClientDetail = lazy(() => import('./components/clients/ClientDetail'));
+const ClientsList = lazy(() => import('./components/clients/ClientsList'));
+
+// Billing and Invoicing
+const BillingPage = lazy(() => import('./components/billing/BillingPage'));
+const InvoicesPage = lazy(() => import('./components/billing/InvoicesPage'));
+const InvoiceGenerator = lazy(() => import('./components/InvoiceGenerator'));
+const PaymentMethodsPage = lazy(() => import('./components/billing/PaymentMethodsPage'));
+
+// Other existing components
+const MessagesPage = lazy(() => import('./components/messages/MessagesPage'));
+const TelemedicinePage = lazy(() => import('./components/telemedicine/TelemedicinePage'));
+const HealthMetricsPage = lazy(() => import('./components/health-metrics/HealthMetricsPage'));
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -101,8 +123,6 @@ const PageLoading = () => (
 const ProtectedRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
   
-  console.log('ProtectedRoute checking auth:', { isAuthenticated: !!currentUser, loading });
-
   // Show loading while checking auth
   if (loading) {
     return <LoadingComponent />;
@@ -110,36 +130,14 @@ const ProtectedRoute = ({ children }) => {
 
   // Redirect to login if not authenticated
   if (!currentUser) {
-    console.log('Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
   return children;
 };
 
-// App layout with sidebar for authenticated views
-const AppLayout = ({ children }) => {
-  const appContainerStyle = {
-    display: 'flex',
-    minHeight: '100vh',
-    backgroundColor: '#111827'
-  };
-
-  const contentStyle = {
-    flex: 1,
-    padding: '1rem',
-    overflowY: 'auto'
-  };
-
-  return (
-    <div style={appContainerStyle}>
-      <Sidebar />
-      <main style={contentStyle}>
-        {children}
-      </main>
-    </div>
-  );
-};
+// Import AppLayout component
+import AppLayout from './components/layout/AppLayout';
 
 // 404 Not Found component
 const NotFound = () => (
@@ -189,7 +187,80 @@ function AppContent() {
           {/* Test route */}
           <Route path="/test" element={<div>Test Page</div>} />
           
-          {/* New project routes */}
+          {/* Time Tracking Routes */}
+          <Route path="/time-tracking" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <TimeTrackingPage />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/time-tracking/entries" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <TimeEntriesList />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/time-tracking/summary" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <TimeSummary />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/time-tracking/settings" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <TimeTrackingSettings />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/time-tracking/log" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <TimeEntryForm />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Projects Routes */}
+          <Route path="/projects" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <ProjectList />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
           <Route path="/projects/:projectId" element={
             <ProtectedRoute>
               <AppLayout>
@@ -208,6 +279,19 @@ function AppContent() {
                 <ErrorBoundary>
                   <Suspense fallback={<PageLoading />}>
                     <TaskForm />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Tasks Routes */}
+          <Route path="/tasks" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <KanbanBoard />
                   </Suspense>
                 </ErrorBoundary>
               </AppLayout>
@@ -250,6 +334,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
+          {/* Calendar Routes */}
           <Route path="/calendar" element={
             <ProtectedRoute>
               <AppLayout>
@@ -274,6 +359,19 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
+          {/* Client Routes */}
+          <Route path="/clients" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <ClientsList />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
           <Route path="/clients/:clientId" element={
             <ProtectedRoute>
               <AppLayout>
@@ -286,7 +384,94 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
-          {/* Provider dashboard */}
+          {/* Billing Routes */}
+          <Route path="/billing" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <BillingPage />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/billing/invoices" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <InvoicesPage />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/billing/invoice-generator" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <InvoiceGenerator />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/billing/payment-methods" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <PaymentMethodsPage />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Messages and Telemedicine Routes */}
+          <Route path="/messages" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <MessagesPage />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/telemedicine" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <TelemedicinePage />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Health Metrics Routes */}
+          <Route path="/health-metrics" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <Suspense fallback={<PageLoading />}>
+                    <HealthMetricsPage />
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Dashboard Routes */}
           <Route path="/provider-dashboard" element={
             <ProtectedRoute>
               <AppLayout>
@@ -299,8 +484,119 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
-          {/* Existing routes remain the same... */}
-          {/* (All previous routes from appointments, medical records, etc. remain unchanged) */}
+          {/* Appointments Routes */}
+          <Route path="/appointments" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <AppointmentsProvider>
+                    <Suspense fallback={<PageLoading />}>
+                      <AppointmentsPage />
+                    </Suspense>
+                  </AppointmentsProvider>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/appointments/schedule" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <AppointmentsProvider>
+                    <Suspense fallback={<PageLoading />}>
+                      <ScheduleNewPage />
+                    </Suspense>
+                  </AppointmentsProvider>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/appointments/calendar" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <AppointmentsProvider>
+                    <Suspense fallback={<PageLoading />}>
+                      <CalendarViewPage />
+                    </Suspense>
+                  </AppointmentsProvider>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Medical Records Routes */}
+          <Route path="/medical-records" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <MedicalRecordsProvider>
+                    <Suspense fallback={<PageLoading />}>
+                      <MedicalRecordsPage />
+                    </Suspense>
+                  </MedicalRecordsProvider>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/medical-records/health-summary" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <MedicalRecordsProvider>
+                    <Suspense fallback={<PageLoading />}>
+                      <HealthSummaryPage />
+                    </Suspense>
+                  </MedicalRecordsProvider>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/medical-records/medications" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <MedicalRecordsProvider>
+                    <Suspense fallback={<PageLoading />}>
+                      <MedicationsPage />
+                    </Suspense>
+                  </MedicalRecordsProvider>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/medical-records/lab-results" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <MedicalRecordsProvider>
+                    <Suspense fallback={<PageLoading />}>
+                      <LabResultsPage />
+                    </Suspense>
+                  </MedicalRecordsProvider>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/medical-records/imaging" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ErrorBoundary>
+                  <MedicalRecordsProvider>
+                    <Suspense fallback={<PageLoading />}>
+                      <ImagingPage />
+                    </Suspense>
+                  </MedicalRecordsProvider>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          } />
           
           {/* Protected home route */}
           <Route path="/" element={
